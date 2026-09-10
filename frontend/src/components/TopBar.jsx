@@ -43,7 +43,7 @@ const TopBar = () => {
     <nav className="glass-panel mx-6 mt-4 px-6 py-4 flex items-center justify-between sticky top-4 z-50">
       <div className="flex items-center gap-2 text-primary font-bold text-xl">
         <Leaf size={24} />
-        <span>AgriPredict</span>
+        <span>AgriShield</span>
       </div>
       
       <div className="flex items-center gap-6">

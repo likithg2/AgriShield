@@ -4,7 +4,7 @@ import { AuthContext } from '../context/AuthContext';
 import { predictionsAPI } from '../utils/api';
 import GlassCard from '../components/GlassCard';
 import Button from '../components/Button';
-import { History as HistoryIcon, ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { History as HistoryIcon, ChevronLeft, ChevronRight, Download, X } from 'lucide-react';
 import ImageModal from '../components/ImageModal';
 
 const getCropEmoji = (crop) => {
@@ -41,6 +41,7 @@ const History = () => {
 
   // Pagination state
   const [page, setPage] = useState(1);
+  const [selectedPrediction, setSelectedPrediction] = useState(null);
   const [total, setTotal] = useState(0);
   const pageSize = 10;
 
@@ -141,7 +142,9 @@ const History = () => {
               const createdAt = new Date(p.created_at).toLocaleString();
               
               return (
-                <div key={p.id} className="border border-glass-border rounded-xl p-5 bg-background/50 hover:bg-background/80 transition-colors">
+                <div key={p.id} 
+                     className="border border-glass-border rounded-xl p-5 bg-background/50 hover:bg-background/80 transition-colors cursor-pointer hover:border-primary/50"
+                     onClick={() => setSelectedPrediction(p)}>
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <h3 className="text-xl font-bold flex items-center gap-2 mb-1">
@@ -228,6 +231,109 @@ const History = () => {
       </GlassCard>
 
       <ImageModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} imageSrc={modalImageSrc} />
+
+      {/* PREDICTION DETAILS MODAL */}
+      {selectedPrediction && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="w-full max-w-2xl flex flex-col p-0 border border-white/30 shadow-[0_0_40px_rgba(0,0,0,0.3)] overflow-hidden rounded-2xl bg-white/30 dark:bg-gray-900/60 backdrop-blur-xl">
+            <div className="p-4 border-b border-glass-border flex justify-between items-center bg-white/10 dark:bg-black/20">
+              <h2 className="text-xl font-bold flex items-center gap-2 text-text-main">
+                {getCropEmoji(selectedPrediction.crop)} Prediction #{`PRED-${selectedPrediction.id.toString().padStart(4, '0')}`}
+              </h2>
+              <button 
+                onClick={() => setSelectedPrediction(null)}
+                className="p-1 rounded-full hover:bg-white/10 text-text-muted hover:text-white transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto max-h-[70vh]">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-white/10 dark:bg-black/30 p-3 rounded-xl border border-white/10 shadow-sm backdrop-blur-md">
+                  <div className="text-xs text-text-muted mb-1 uppercase tracking-wider">Crop</div>
+                  <div className="font-bold text-lg">{selectedPrediction.crop}</div>
+                </div>
+                <div className="bg-white/10 dark:bg-black/30 p-3 rounded-xl border border-white/10 shadow-sm backdrop-blur-md">
+                  <div className="text-xs text-text-muted mb-1 uppercase tracking-wider">Quantity</div>
+                  <div className="font-bold text-lg">{selectedPrediction.quantity_tons} Tons</div>
+                </div>
+                <div className="bg-white/10 dark:bg-black/30 p-3 rounded-xl border border-white/10 shadow-sm backdrop-blur-md">
+                  <div className="text-xs text-text-muted mb-1 uppercase tracking-wider">Risk Level</div>
+                  <div className={`font-bold text-lg ${selectedPrediction.risk_level === 'HIGH' ? 'text-danger' : selectedPrediction.risk_level === 'MEDIUM' ? 'text-warning' : 'text-success'}`}>{selectedPrediction.risk_level || 'LOW'}</div>
+                </div>
+                <div className="bg-white/10 dark:bg-black/30 p-3 rounded-xl border border-white/10 shadow-sm backdrop-blur-md">
+                  <div className="text-xs text-text-muted mb-1 uppercase tracking-wider">Est. Loss</div>
+                  <div className="font-bold text-lg text-red-400">~ ₹{Math.round(selectedPrediction.financial_loss).toLocaleString()}</div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="border border-white/20 rounded-xl p-5 bg-white/5 shadow-sm backdrop-blur-sm">
+                  <h3 className="font-semibold text-primary mb-3 text-lg">Environmental Conditions</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-6 text-sm">
+                    <div><span className="text-text-muted">Temp:</span> <span className="font-medium ml-1">{selectedPrediction.temperature}°C</span></div>
+                    <div><span className="text-text-muted">Humidity:</span> <span className="font-medium ml-1">{selectedPrediction.humidity}%</span></div>
+                    <div><span className="text-text-muted">Gas:</span> <span className="font-medium ml-1">{selectedPrediction.gas_level} ppm</span></div>
+                  </div>
+                </div>
+
+                <div className="border border-white/20 rounded-xl p-5 bg-white/5 shadow-sm backdrop-blur-sm">
+                  <h3 className="font-semibold text-primary mb-3 text-lg">Logistics Data</h3>
+                  <div className="grid grid-cols-2 gap-y-4 gap-x-6 text-sm">
+                    {selectedPrediction.district && (
+                      <div><span className="text-text-muted">Origin:</span> <span className="font-medium ml-1">{selectedPrediction.district}</span></div>
+                    )}
+                    {selectedPrediction.destination && (
+                      <div><span className="text-text-muted">Destination:</span> <span className="font-medium ml-1">{selectedPrediction.destination}</span></div>
+                    )}
+                    {selectedPrediction.expected_transit_days != null && selectedPrediction.expected_transit_days !== '' && (
+                      <div><span className="text-text-muted">Expected Transit:</span> <span className="font-medium ml-1">{selectedPrediction.expected_transit_days} days</span></div>
+                    )}
+                    {selectedPrediction.actual_transit_days != null && selectedPrediction.actual_transit_days !== '' && (
+                      <div><span className="text-text-muted">Actual Transit:</span> <span className="font-medium ml-1">{selectedPrediction.actual_transit_days} days</span></div>
+                    )}
+                    {selectedPrediction.road_condition && (
+                      <div className="col-span-2"><span className="text-text-muted">Road:</span> <span className="font-medium ml-1">{selectedPrediction.road_condition}</span></div>
+                    )}
+                  </div>
+                </div>
+
+                {selectedPrediction.advisory_transcript_en && (
+                  <div className="border border-green-500/30 rounded-xl p-5 bg-green-500/10 shadow-sm backdrop-blur-sm mt-4">
+                    <h3 className="font-semibold text-green-400 mb-2 text-lg">Dynamic Advisory</h3>
+                    <div className="text-sm text-text-main whitespace-pre-wrap leading-relaxed">
+                      {selectedPrediction.advisory_transcript_en}
+                    </div>
+                  </div>
+                )}
+
+                {selectedPrediction.image_data && (
+                  <div className="border border-white/20 rounded-xl p-5 bg-white/5 shadow-sm backdrop-blur-sm mt-4">
+                    <h3 className="font-semibold text-primary mb-3 text-lg">Analyzed Crop Image</h3>
+                    <img 
+                      src={selectedPrediction.image_data.startsWith('data:image') ? selectedPrediction.image_data : `data:image/jpeg;base64,${selectedPrediction.image_data}`} 
+                      alt="Analyzed crop" 
+                      className="w-full max-w-sm rounded-lg object-cover border border-white/10 shadow-lg cursor-pointer hover:opacity-80 transition-opacity"
+                      onClick={() => {
+                        setModalImageSrc(selectedPrediction.image_data.startsWith('data:image') ? selectedPrediction.image_data : `data:image/jpeg;base64,${selectedPrediction.image_data}`);
+                        setIsModalOpen(true);
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <div className="p-4 border-t border-glass-border bg-white/5 dark:bg-black/20 flex justify-end">
+              <Button onClick={() => setSelectedPrediction(null)} variant="primary" className="!py-2 !px-6">
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

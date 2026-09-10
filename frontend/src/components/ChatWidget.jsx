@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect, useContext } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageSquare, X, Send, Bot, Menu, Plus, Clock, Mic, MicOff, Volume2, Loader } from 'lucide-react';
+import { MessageSquare, X, Send, Bot, Menu, Plus, Clock, Mic, MicOff, Volume2, Loader, Square } from 'lucide-react';
 import { LanguageContext } from '../context/LanguageContext';
+import { AuthContext } from '../context/AuthContext';
 import { aiAPI, predictionsAPI } from '../utils/api';
 import toast from 'react-hot-toast';
 
@@ -17,14 +18,36 @@ const ChatWidget = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   // Voice states
-  const [isListening, setIsListening] = useState(false);
+  const isListeningRef = useRef(false);
+  const [isListeningState, setIsListeningState] = useState(false);
+  const setIsListening = (val) => {
+    isListeningRef.current = val;
+    setIsListeningState(val);
+  };
+  const isListening = isListeningState;
+
+  const isConversationModeRef = useRef(false);
+  const [isConversationModeState, setIsConversationModeState] = useState(false);
+  const setConversationMode = (val) => {
+    isConversationModeRef.current = val;
+    setIsConversationModeState(val);
+  };
+  const isConversationMode = isConversationModeState;
+
   const [wasVoiceInput, setWasVoiceInput] = useState(false);
   const [playingAudioIdx, setPlayingAudioIdx] = useState(null);
+  const [isAudioFetching, setIsAudioFetching] = useState(false);
+  const currentAudioRef = useRef(null);
   const recognitionRef = useRef(null);
   
   const messagesEndRef = useRef(null);
   
   const { t, language } = useContext(LanguageContext);
+  const { user } = useContext(AuthContext);
+
+  if (!user || user.role !== 'farmer') {
+    return null;
+  }
 
   const fetchSessions = async () => {
     try {
@@ -113,39 +136,57 @@ const ChatWidget = () => {
   const playTTS = async (text, idx) => {
     if (playingAudioIdx !== null) return;
     setPlayingAudioIdx(idx);
+    setIsAudioFetching(true);
     try {
-      const langMap = {
-        'en': 'english',
-        'kn': 'kannada',
-        'hi': 'hindi'
-      };
-      const reqLang = langMap[language] || 'english';
+      const reqLang = language || 'en';
       const res = await predictionsAPI.getAdvisoryAudio({ text, lang: reqLang });
       const audioUrl = URL.createObjectURL(res.data);
       const audio = new Audio(audioUrl);
+      currentAudioRef.current = audio;
+      setIsAudioFetching(false);
       
       audio.onended = () => {
         setPlayingAudioIdx(null);
+        currentAudioRef.current = null;
+        if (isConversationModeRef.current) {
+          if (!isListeningRef.current && recognitionRef.current) {
+            setInputMessage('');
+            setWasVoiceInput(true);
+            try {
+              recognitionRef.current.start();
+              setIsListening(true);
+            } catch (e) {}
+          }
+        }
       };
       audio.play();
     } catch (err) {
       console.error(err);
       toast.error("Failed to generate audio");
       setPlayingAudioIdx(null);
+      setIsAudioFetching(false);
     }
   };
 
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!inputMessage.trim()) return;
+  const stopTTS = () => {
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current.currentTime = 0;
+      currentAudioRef.current = null;
+    }
+    setPlayingAudioIdx(null);
+    setIsAudioFetching(false);
+  };
 
-    const newUserMessage = { role: 'user', content: inputMessage.trim() };
+  const sendMessageText = async (textToSubmit, isVoice = false) => {
+    if (!textToSubmit.trim()) return;
+
+    const newUserMessage = { role: 'user', content: textToSubmit.trim() };
     setMessages(prev => [...prev, newUserMessage]);
     setInputMessage('');
     setIsLoading(true);
 
     try {
-      // The API expects an array of previous messages for context
       const chatHistory = [...messages, newUserMessage].map(msg => ({
         role: msg.role,
         content: msg.content
@@ -163,22 +204,54 @@ const ChatWidget = () => {
       
       setMessages(prev => {
         const newMsgs = [...prev, aiMessage];
-        if (wasVoiceInput) {
-          // Play TTS automatically for the new message index
+        if (isVoice) {
           playTTS(aiResponseText, newMsgs.length - 1);
         }
         return newMsgs;
       });
-      setWasVoiceInput(false);
     } catch (err) {
       console.error("Chat error:", err);
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: "Sorry, I am having trouble connecting to the server right now."
       }]);
-      setWasVoiceInput(false);
     } finally {
       setIsLoading(false);
+      if (isVoice) setWasVoiceInput(false);
+    }
+  };
+
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    await sendMessageText(inputMessage, false);
+  };
+
+  useEffect(() => {
+    if (wasVoiceInput && inputMessage && !isLoading) {
+      sendMessageText(inputMessage, true);
+      setWasVoiceInput(false);
+    }
+  }, [wasVoiceInput, inputMessage]);
+
+  const toggleConversationMode = () => {
+    const newVal = !isConversationMode;
+    setConversationMode(newVal);
+    if (newVal) {
+      if (!isListeningRef.current && recognitionRef.current) {
+        setInputMessage('');
+        setWasVoiceInput(true);
+        try {
+          recognitionRef.current.start();
+          setIsListening(true);
+        } catch (e) {}
+      }
+    } else {
+      if (isListeningRef.current && recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {}
+        setIsListening(false);
+      }
     }
   };
 
@@ -306,12 +379,22 @@ const ChatWidget = () => {
                         <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                         {msg.role === 'assistant' && (
                           <button
-                            onClick={() => playTTS(msg.content, idx)}
-                            disabled={playingAudioIdx !== null}
+                            onClick={() => {
+                              if (playingAudioIdx === idx && !isAudioFetching) {
+                                stopTTS();
+                              } else if (playingAudioIdx === null) {
+                                playTTS(msg.content, idx);
+                              }
+                            }}
+                            disabled={playingAudioIdx !== null && playingAudioIdx !== idx}
                             className="absolute right-2 top-2 p-1.5 rounded-full bg-black/40 text-text-muted hover:text-white transition-colors"
-                            title="Play Audio"
+                            title={playingAudioIdx === idx && !isAudioFetching ? "Stop Audio" : "Play Audio"}
                           >
-                            {playingAudioIdx === idx ? <Loader className="w-4 h-4 animate-spin" /> : <Volume2 className="w-4 h-4" />}
+                            {playingAudioIdx === idx ? (
+                              isAudioFetching ? <Loader className="w-4 h-4 animate-spin" /> : <Square className="w-4 h-4 text-danger" fill="currentColor" />
+                            ) : (
+                              <Volume2 className="w-4 h-4" />
+                            )}
                           </button>
                         )}
                       </div>
@@ -336,12 +419,13 @@ const ChatWidget = () => {
                 <form onSubmit={handleSendMessage} className="flex gap-2">
                   <button
                     type="button"
-                    onClick={toggleListening}
-                    className={`p-2.5 rounded-xl transition-colors flex items-center justify-center shrink-0 ${isListening ? 'bg-danger text-white animate-pulse' : 'bg-white/10 text-white hover:bg-white/20'}`}
-                    title="Voice Input"
+                    onClick={toggleConversationMode}
+                    className={`p-2.5 rounded-xl transition-colors flex items-center justify-center shrink-0 ${isConversationMode ? 'bg-primary text-black animate-pulse shadow-[0_0_15px_rgba(16,185,129,0.5)]' : 'bg-white/10 text-white hover:bg-white/20'}`}
+                    title="Continuous Voice Conversation"
                   >
-                    {isListening ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
+                    {isConversationMode ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
                   </button>
+
                   <input
                     type="text"
                     value={inputMessage}

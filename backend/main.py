@@ -9,6 +9,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.database import engine, Base
 from backend.routers import auth, predictions, shipments, warehouses, farmers, notifications, ai
 
+import asyncio
+from backend.tasks import background_monitoring_loop
+
 # ── Create all database tables on startup ─────────────────────────────────────
 Base.metadata.create_all(bind=engine)
 
@@ -23,6 +26,10 @@ app = FastAPI(
     docs_url="/api/docs",
     redoc_url="/api/redoc",
 )
+
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(background_monitoring_loop())
 
 # ── CORS Middleware (allow Streamlit frontend) ────────────────────────────────
 app.add_middleware(

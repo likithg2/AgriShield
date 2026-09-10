@@ -33,6 +33,8 @@ const Dashboard = () => {
   const [updateMsg, setUpdateMsg] = useState({ type: '', text: '' });
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showNotificationHistory, setShowNotificationHistory] = useState(false);
+  const [selectedNotification, setSelectedNotification] = useState(null);
+  const [selectedActiveShipment, setSelectedActiveShipment] = useState(null);
 
   const handleDeleteAccount = async () => {
     try {
@@ -112,9 +114,9 @@ const Dashboard = () => {
         setManagerData({
           refrig_fault: selectedWh?.base_temp_c > 10.0,
           in_storage: shipments.filter(s => s.status === 'In Storage').length,
-          in_transit: shipments.filter(s => s.status === 'In Transit').length,
-          dispatched: shipments.filter(s => ['Listed (Standard Mandi)', 'Listed (Accelerated)', 'Redirected', 'Awaiting Buyer Pickup Confirmation', 'Delivered'].includes(s.status)).length,
-          active_shipments: shipments.filter(s => s.status === 'In Transit' || String(s.status).startsWith('Listed') || s.status === 'Redirected' || s.status === 'In Storage' || s.status === 'Awaiting Buyer Pickup Confirmation')
+          in_transit: shipments.filter(s => s.status === 'In Transit' || s.status === 'Delivered').length,
+          dispatched: shipments.filter(s => ['Listed (Standard Mandi)', 'Listed (Accelerated)', 'Redirected', 'Awaiting Buyer Pickup Confirmation'].includes(s.status)).length,
+          active_shipments: shipments.filter(s => s.status === 'In Transit' || s.status === 'Delivered' || String(s.status).startsWith('Listed') || s.status === 'Redirected' || s.status === 'In Storage' || s.status === 'Awaiting Buyer Pickup Confirmation')
         });
       }
     } catch (error) {
@@ -453,21 +455,25 @@ const Dashboard = () => {
           {filteredActiveShipments.length > 0 ? (
             <div className="space-y-4">
               {currentActiveShipments.map(shipment => (
-                  <GlassCard key={shipment.id} className="p-4 hover:border-primary/50 transition-colors">
+                  <GlassCard 
+                    key={shipment.id} 
+                    className="p-4 hover:border-primary/50 transition-colors cursor-pointer"
+                    onClick={() => setSelectedActiveShipment(shipment)}
+                  >
                     <div className="flex justify-between items-start mb-2">
                       <div>
                         <span className="font-mono text-xs text-text-muted">
-                          {shipment.booking_id} {shipment.vehicle_reg_number ? `(${shipment.vehicle_reg_number})` : ''}
+                          Booking #{shipment.booking_id} {shipment.vehicle_reg_number ? `| Vehicle: ${shipment.vehicle_reg_number}` : ''}
                         </span>
                         <h4 className="text-lg font-bold">{getCropEmoji(shipment.crop)} {shipment.crop} <span className="text-sm font-normal text-text-muted">({shipment.tonnage} tons)</span></h4>
                       </div>
                       <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-semibold capitalize border border-primary/20">
-                        {shipment.status.replace('_', ' ')}
+                        {shipment.status === 'Delivered' ? 'Reached' : shipment.status.replace('_', ' ')}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm text-text-muted mt-4">
                       <span>To: <span className="font-medium text-text-main">{shipment.destination}</span></span>
-                      <span>ETA: <span className="font-medium text-text-main">{shipment.eta_hours ? parseFloat(shipment.eta_hours).toFixed(1) : '-'} hrs</span></span>
+                      <span>ETA: <span className="font-medium text-text-main">{shipment.status === 'Delivered' ? 'N/A' : (shipment.eta_hours ? parseFloat(shipment.eta_hours).toFixed(1) + ' hrs' : '-')}</span></span>
                       <span className="flex items-center gap-1">
                         Risk: 
                         <span className={`font-medium capitalize ${
@@ -532,8 +538,10 @@ const Dashboard = () => {
             <div className={`overflow-y-auto ${user?.role === 'farmer' ? 'max-h-[850px]' : 'max-h-[450px]'}`}>
               {notifications.filter(n => !n.is_read).length > 0 ? (
                 <div className="divide-y divide-glass-border">
-                  {(user?.role === 'farmer' ? notifications.filter(n => !n.is_read).slice(0, 10) : notifications.filter(n => !n.is_read).slice(0, 5)).map(notif => (
-                    <div key={notif.id} className="p-4 bg-primary/5">
+                  {(user?.role === 'farmer' ? notifications.filter(n => !n.is_read).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 10) : notifications.filter(n => !n.is_read).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5)).map(notif => (
+                    <div key={notif.id} 
+                         className="p-4 bg-primary/5 hover:bg-primary/10 cursor-pointer transition-colors"
+                         onClick={() => setSelectedNotification(notif)}>
                       <div className="flex justify-between items-start gap-2 mb-1">
                         <h4 className="font-semibold text-sm flex items-center gap-2">
                           {notif.type === 'dispatch_alert' && <AlertTriangle size={14} className="text-warning" />}
@@ -541,14 +549,14 @@ const Dashboard = () => {
                         </h4>
                         {!notif.is_read && (
                           <button 
-                            onClick={() => handleMarkAsRead(notif.id)}
+                            onClick={(e) => { e.stopPropagation(); handleMarkAsRead(notif.id); }}
                             className="text-xs text-primary hover:underline whitespace-nowrap"
                           >
                             Mark read
                           </button>
                         )}
                       </div>
-                      <p className="text-sm text-text-muted mb-2">{notif.message}</p>
+                      <p className="text-sm text-text-muted mb-2 line-clamp-1">{notif.message.split('\n')[0]}</p>
                       <span className="text-xs text-text-muted/50">
                         {new Date(notif.created_at).toLocaleString()}
                       </span>
@@ -625,19 +633,21 @@ const Dashboard = () => {
               </button>
             </div>
             <div className="overflow-y-auto flex-1 pr-2 space-y-2">
-              {notifications.filter(n => n.is_read).length > 0 ? (
-                notifications.filter(n => n.is_read).map(notif => (
-                  <div key={notif.id} className="p-4 rounded-lg bg-black/5 dark:bg-white/5 border border-glass-border">
-                    <div className="flex justify-between items-start gap-2 mb-1">
-                      <h4 className="font-semibold text-sm flex items-center gap-2 text-gray-900 dark:text-white">
-                        {notif.type === 'dispatch_alert' && <AlertTriangle size={14} className="text-warning" />}
+              {notifications.length > 0 ? (
+                notifications.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).map(notif => (
+                  <div key={notif.id} 
+                       className={`p-4 hover:bg-white/5 cursor-pointer transition-colors ${!notif.is_read ? 'bg-primary/10' : ''}`}
+                       onClick={() => setSelectedNotification(notif)}>
+                    <div className="flex justify-between items-start mb-1">
+                      <h4 className="font-bold flex items-center gap-2 text-gray-900 dark:text-white">
+                        {notif.type === 'dispatch_alert' && <AlertTriangle size={16} className="text-warning" />}
                         {notif.title}
                       </h4>
-                      <span className="text-xs text-text-muted/50 whitespace-nowrap">
+                      <span className="text-xs text-text-muted">
                         {new Date(notif.created_at).toLocaleString()}
                       </span>
                     </div>
-                    <p className="text-sm text-text-muted">{notif.message}</p>
+                    <p className="text-sm text-text-muted line-clamp-2">{notif.message.split('\n')[0]}</p>
                   </div>
                 ))
               ) : (
@@ -665,6 +675,137 @@ const Dashboard = () => {
             <div className="flex gap-4 w-full">
               <Button type="button" variant="secondary" className="flex-1 justify-center" onClick={() => setShowDeleteModal(false)}>Cancel</Button>
               <Button type="button" className="flex-1 justify-center bg-danger hover:bg-red-600 text-white border-0" onClick={handleDeleteAccount}>Yes, Delete</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* NOTIFICATION DETAILS MODAL */}
+      {selectedNotification && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-md z-[60] flex items-center justify-center p-4">
+          <div className="w-full max-w-lg flex flex-col p-0 border border-white/60 shadow-[0_8px_32px_rgba(255,255,255,0.15)] overflow-hidden rounded-2xl bg-white/70 dark:bg-white/10 backdrop-blur-2xl">
+            <div className="p-4 border-b border-white/30 flex justify-between items-center bg-white/40 dark:bg-black/40">
+              <h2 className="text-lg font-bold flex items-center gap-2 text-text-main">
+                {selectedNotification.type === 'dispatch_alert' ? <AlertTriangle size={20} className="text-warning" /> : <Bell size={20} className="text-primary" />}
+                {selectedNotification.title}
+              </h2>
+              <button 
+                onClick={() => setSelectedNotification(null)}
+                className="p-1 rounded-full hover:bg-white/10 text-text-muted hover:text-white transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto max-h-[60vh]">
+              <span className="text-xs text-text-muted block mb-4 border-b border-white/5 pb-2">
+                Received: {new Date(selectedNotification.created_at).toLocaleString()}
+              </span>
+              <div className="text-sm text-text-main whitespace-pre-wrap leading-relaxed">
+                {selectedNotification.message}
+              </div>
+            </div>
+            
+            <div className="p-4 border-t border-glass-border bg-white/5 dark:bg-black/20 flex justify-end">
+              <Button onClick={() => setSelectedNotification(null)} variant="primary" className="!py-2 !px-6">
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ACTIVE SHIPMENT DETAILS MODAL */}
+      {selectedActiveShipment && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-md z-[60] flex items-center justify-center p-4">
+          <div className="w-full max-w-2xl flex flex-col p-0 border border-white/60 shadow-[0_8px_32px_rgba(255,255,255,0.15)] overflow-hidden rounded-2xl bg-white/70 dark:bg-white/10 backdrop-blur-2xl">
+            <div className="p-4 border-b border-white/30 flex justify-between items-center bg-white/40 dark:bg-black/40">
+              <h2 className="text-xl font-bold flex items-center gap-2 text-text-main">
+                <Truck size={20} className="text-primary" /> Shipment #{selectedActiveShipment.booking_id}
+              </h2>
+              <button 
+                onClick={() => setSelectedActiveShipment(null)}
+                className="p-1 rounded-full hover:bg-white/10 text-text-muted hover:text-white transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto max-h-[70vh]">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h3 className="text-2xl font-bold flex items-center gap-2 mb-1">
+                    {getCropEmoji(selectedActiveShipment.crop)} {selectedActiveShipment.crop}
+                  </h3>
+                  <div className="text-sm text-text-muted">
+                    Created: {new Date(selectedActiveShipment.created_at).toLocaleString()}
+                  </div>
+                </div>
+                <div className="px-4 py-1.5 bg-primary/20 text-primary border border-primary/30 rounded-full font-bold text-sm tracking-wider uppercase">
+                  {selectedActiveShipment.status.replace('_', ' ')}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-white/50 dark:bg-white/5 p-3 rounded-xl border border-white/40 shadow-sm backdrop-blur-md">
+                  <div className="text-xs text-text-muted mb-1 uppercase tracking-wider">Quantity</div>
+                  <div className="font-bold text-lg text-text-main">{selectedActiveShipment.tonnage} Tons</div>
+                </div>
+                <div className="bg-white/50 dark:bg-white/5 p-3 rounded-xl border border-white/40 shadow-sm backdrop-blur-md">
+                  <div className="text-xs text-text-muted mb-1 uppercase tracking-wider">Risk Level</div>
+                  <div className={`font-bold text-lg ${
+                    (selectedActiveShipment.risk_status || '').toLowerCase() === 'high' ? 'text-danger' : 
+                    (selectedActiveShipment.risk_status || '').toLowerCase() === 'medium' ? 'text-warning' : 'text-success'
+                  }`}>{selectedActiveShipment.risk_status || 'LOW'}</div>
+                </div>
+                <div className="bg-white/50 dark:bg-white/5 p-3 rounded-xl border border-white/40 shadow-sm backdrop-blur-md">
+                  <div className="text-xs text-text-muted mb-1 uppercase tracking-wider">Shelf Life</div>
+                  <div className="font-bold text-lg text-text-main">{selectedActiveShipment.shelf_days_calculated ? `${selectedActiveShipment.shelf_days_calculated.toFixed(1)} days` : '-'}</div>
+                </div>
+                <div className="bg-white/50 dark:bg-white/5 p-3 rounded-xl border border-white/40 shadow-sm backdrop-blur-md">
+                  <div className="text-xs text-text-muted mb-1 uppercase tracking-wider">Vehicle Reg</div>
+                  <div className="font-bold text-lg text-text-main">{selectedActiveShipment.vehicle_reg_number || 'N/A'}</div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="border border-white/40 rounded-xl p-5 bg-white/40 dark:bg-white/5 shadow-sm backdrop-blur-md">
+                  <h3 className="font-semibold text-primary mb-3 text-lg flex items-center gap-2">
+                    <Truck size={18} /> Logistics Route
+                  </h3>
+                  <div className="grid grid-cols-2 gap-y-4 gap-x-6 text-sm">
+                    {selectedActiveShipment.prediction?.district && (
+                      <div><span className="text-text-muted">Origin:</span> <span className="font-medium">{selectedActiveShipment.prediction.district}</span></div>
+                    )}
+                    {selectedActiveShipment.destination && (
+                      <div><span className="text-text-muted">Destination:</span> <span className="font-medium">{selectedActiveShipment.destination}</span></div>
+                    )}
+                    {selectedActiveShipment.distance_km != null && selectedActiveShipment.distance_km !== '' && (
+                      <div><span className="text-text-muted">Distance:</span> <span className="font-medium">{selectedActiveShipment.distance_km} km</span></div>
+                    )}
+                    {selectedActiveShipment.eta_hours != null && selectedActiveShipment.eta_hours !== '' && (
+                      <div><span className="text-text-muted">Est. Arrival:</span> <span className="font-medium">{parseFloat(selectedActiveShipment.eta_hours).toFixed(1)} hrs</span></div>
+                    )}
+                  </div>
+                </div>
+                
+                {selectedActiveShipment.prediction && (
+                  <div className="border border-white/40 rounded-xl p-5 bg-white/40 dark:bg-white/5 shadow-sm backdrop-blur-md mt-4">
+                    <h3 className="font-semibold text-secondary mb-3 text-lg">Predicted Loss Metrics</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-6 text-sm">
+                      <div><span className="text-text-muted">Vol. Loss:</span> <span className="font-bold text-lg ml-1">{selectedActiveShipment.prediction.loss_percentage}%</span></div>
+                      <div><span className="text-text-muted">Fin. Loss:</span> <span className="font-bold text-lg text-red-400 ml-1">~ ₹{Math.round(selectedActiveShipment.prediction.financial_loss).toLocaleString()}</span></div>
+                      <div><span className="text-text-muted">Mandi Price:</span> <span className="font-bold text-lg ml-1">₹{selectedActiveShipment.prediction.mandi_price_per_kg}/kg</span></div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <div className="p-4 border-t border-white/30 bg-white/40 dark:bg-black/40 flex justify-end">
+              <Button onClick={() => setSelectedActiveShipment(null)} variant="primary" className="!py-2 !px-6">
+                Close
+              </Button>
             </div>
           </div>
         </div>

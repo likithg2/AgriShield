@@ -4,7 +4,7 @@ import { AuthContext } from '../context/AuthContext';
 import GlassCard from '../components/GlassCard';
 import Button from '../components/Button';
 import { warehousesAPI, shipmentsAPI } from '../utils/api';
-import { Search, Filter, Download } from 'lucide-react';
+import { Search, Filter, Download, Truck, X, User } from 'lucide-react';
 
 const WarehouseLogs = () => {
   const { user, selectedAdminWarehouseId } = useContext(AuthContext);
@@ -12,6 +12,18 @@ const WarehouseLogs = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [selectedLog, setSelectedLog] = useState(null);
+
+  const getCropEmoji = (crop) => {
+    const lower = (crop || '').toLowerCase();
+    if (lower.includes('tomato')) return '🍅';
+    if (lower.includes('onion')) return '🧅';
+    if (lower.includes('potato')) return '🥔';
+    if (lower.includes('carrot')) return '🥕';
+    if (lower.includes('apple')) return '🍎';
+    if (lower.includes('mango')) return '🥭';
+    return '🌱';
+  };
 
   useEffect(() => {
     if (user && (user.role === 'warehouse_manager' || user.role === 'admin')) {
@@ -53,17 +65,31 @@ const WarehouseLogs = () => {
   });
 
   const downloadCSV = () => {
-    const headers = ['Date Logged', 'Booking ID', 'Farmer Details', 'Vehicle Reg', 'Crop', 'Qty (t)', 'Est. Shelf Life', 'Risk Level', 'Current Status', 'Last Updated'];
+    const headers = [
+      'Date Logged', 'Booking ID', 'Farmer Name', 'Farmer Phone', 'Vehicle Reg', 
+      'Crop', 'Qty (t)', 'Est. Shelf Life', 'Risk Level', 'Current Status', 
+      'Origin', 'Destination', 'Distance (km)', 'Est. Arrival (hrs)', 
+      'Predicted Vol Loss (%)', 'Predicted Fin Loss (₹)', 'Mandi Price (₹/kg)', 'Last Updated'
+    ];
+    
     const rows = filteredShipments.map(s => [
       s.created_at ? new Date(s.created_at).toLocaleString() : '-',
       s.booking_id,
-      `${s.farmer_name || 'Unknown'} (${s.farmer_phone || 'N/A'})`,
+      s.farmer_name || 'Unknown',
+      s.farmer_phone || 'N/A',
       s.vehicle_reg_number || 'N/A',
       s.crop,
       s.tonnage,
       s.shelf_days_calculated ? s.shelf_days_calculated.toFixed(1) + ' days' : '-',
       s.risk_status || 'UNKNOWN',
       s.status,
+      s.prediction?.district || '-',
+      s.destination || '-',
+      s.distance_km || '-',
+      s.eta_hours ? parseFloat(s.eta_hours).toFixed(1) : '-',
+      s.prediction?.loss_percentage || '-',
+      s.prediction?.financial_loss ? Math.round(s.prediction.financial_loss) : '-',
+      s.prediction?.mandi_price_per_kg || '-',
       s.updated_at ? new Date(s.updated_at).toLocaleString() : '-'
     ]);
 
@@ -133,14 +159,12 @@ const WarehouseLogs = () => {
                     <th className="py-3 pr-4">Crop</th>
                     <th className="py-3 pr-4">Qty (t)</th>
                     <th className="py-3 pr-4">Est. Shelf Life</th>
-                    <th className="py-3 pr-4">Risk Level</th>
                     <th className="py-3 pr-4">Current Status</th>
-                    <th className="py-3 pr-4">Last Updated</th>
                   </tr>
                 </thead>
                 <tbody>
                   {[...filteredShipments].sort((a,b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)).map(s => (
-                    <tr key={s.id} className="border-b border-glass-border/30 hover:bg-white/5 transition-colors">
+                    <tr key={s.id} onClick={() => setSelectedLog(s)} className="border-b border-glass-border/30 hover:bg-white/10 transition-colors cursor-pointer">
                       <td className="py-3 pr-4">{s.created_at ? new Date(s.created_at).toLocaleString() : '-'}</td>
                       <td className="py-3 pr-4 font-mono font-medium">{s.booking_id}</td>
                       <td className="py-3 pr-4">
@@ -152,25 +176,122 @@ const WarehouseLogs = () => {
                       <td className="py-3 pr-4">{s.tonnage}</td>
                       <td className="py-3 pr-4">{s.shelf_days_calculated ? s.shelf_days_calculated.toFixed(1) + ' days' : '-'}</td>
                       <td className="py-3 pr-4">
-                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                          (s.risk_status||'').includes('HIGH') ? 'bg-danger/20 text-danger' : 
-                          (s.risk_status||'').includes('MEDIUM') ? 'bg-warning/20 text-warning' : 'bg-success/20 text-success'
-                        }`}>
-                          {s.risk_status || 'UNKNOWN'}
-                        </span>
-                      </td>
-                      <td className="py-3 pr-4">
                         <span className="px-2 py-1 rounded bg-background/50 border border-glass-border text-xs">
                           {s.status}
                         </span>
                       </td>
-                      <td className="py-3 pr-4 text-xs text-text-muted">{s.updated_at ? new Date(s.updated_at).toLocaleString() : '-'}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             ) : <div className="text-center py-10 text-text-muted text-lg">No history logs available.</div>}
           </GlassCard>
+        )}
+
+        {selectedLog && (
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-md z-[60] flex items-center justify-center p-4">
+            <div className="w-full max-w-2xl flex flex-col p-0 border border-white/60 shadow-[0_8px_32px_rgba(255,255,255,0.15)] overflow-hidden rounded-2xl bg-white/70 dark:bg-white/10 backdrop-blur-2xl">
+              <div className="p-4 border-b border-white/30 flex justify-between items-center bg-white/40 dark:bg-black/40">
+                <h2 className="text-xl font-bold flex items-center gap-2 text-text-main">
+                  <Truck size={20} className="text-primary" /> Shipment #{selectedLog.booking_id}
+                </h2>
+                <button 
+                  onClick={() => setSelectedLog(null)}
+                  className="p-1 rounded-full hover:bg-white/10 text-text-muted hover:text-white transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              
+              <div className="p-6 overflow-y-auto max-h-[70vh]">
+                <div className="flex justify-between items-center mb-6">
+                  <div>
+                    <h3 className="text-2xl font-bold flex items-center gap-2 mb-1">
+                      {getCropEmoji(selectedLog.crop)} {selectedLog.crop}
+                    </h3>
+                    <div className="text-sm text-text-muted">
+                      Created: {new Date(selectedLog.created_at).toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="px-4 py-1.5 bg-primary/20 text-primary border border-primary/30 rounded-full font-bold text-sm tracking-wider uppercase">
+                    {selectedLog.status.replace('_', ' ')}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                  <div className="bg-white/50 dark:bg-white/5 p-3 rounded-xl border border-white/40 shadow-sm backdrop-blur-md">
+                    <div className="text-xs text-text-muted mb-1 uppercase tracking-wider">Quantity</div>
+                    <div className="font-bold text-lg text-text-main">{selectedLog.tonnage} Tons</div>
+                  </div>
+                  <div className="bg-white/50 dark:bg-white/5 p-3 rounded-xl border border-white/40 shadow-sm backdrop-blur-md">
+                    <div className="text-xs text-text-muted mb-1 uppercase tracking-wider">Risk Level</div>
+                    <div className={`font-bold text-lg ${
+                      (selectedLog.risk_status || '').toLowerCase() === 'high' ? 'text-danger' : 
+                      (selectedLog.risk_status || '').toLowerCase() === 'medium' ? 'text-warning' : 'text-success'
+                    }`}>{selectedLog.risk_status || 'LOW'}</div>
+                  </div>
+                  <div className="bg-white/50 dark:bg-white/5 p-3 rounded-xl border border-white/40 shadow-sm backdrop-blur-md">
+                    <div className="text-xs text-text-muted mb-1 uppercase tracking-wider">Shelf Life</div>
+                    <div className="font-bold text-lg text-text-main">{selectedLog.shelf_days_calculated ? `${selectedLog.shelf_days_calculated.toFixed(1)} days` : '-'}</div>
+                  </div>
+                  <div className="bg-white/50 dark:bg-white/5 p-3 rounded-xl border border-white/40 shadow-sm backdrop-blur-md">
+                    <div className="text-xs text-text-muted mb-1 uppercase tracking-wider">Vehicle Reg</div>
+                    <div className="font-bold text-lg text-text-main">{selectedLog.vehicle_reg_number || 'N/A'}</div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="border border-white/40 rounded-xl p-5 bg-white/40 dark:bg-white/5 shadow-sm backdrop-blur-md">
+                    <h3 className="font-semibold text-primary mb-3 text-lg flex items-center gap-2">
+                      <User size={18} /> Farmer & Update Info
+                    </h3>
+                    <div className="grid grid-cols-2 gap-y-4 gap-x-6 text-sm">
+                      <div><span className="text-text-muted">Farmer Name:</span> <span className="font-medium">{selectedLog.farmer_name || 'Unknown'}</span></div>
+                      <div><span className="text-text-muted">Phone:</span> <span className="font-medium">{selectedLog.farmer_phone || 'N/A'}</span></div>
+                      <div className="col-span-2"><span className="text-text-muted">Last Updated:</span> <span className="font-medium">{selectedLog.updated_at ? new Date(selectedLog.updated_at).toLocaleString() : '-'}</span></div>
+                    </div>
+                  </div>
+
+                  <div className="border border-white/40 rounded-xl p-5 bg-white/40 dark:bg-white/5 shadow-sm backdrop-blur-md">
+                    <h3 className="font-semibold text-primary mb-3 text-lg flex items-center gap-2">
+                      <Truck size={18} /> Logistics Route
+                    </h3>
+                    <div className="grid grid-cols-2 gap-y-4 gap-x-6 text-sm">
+                      {selectedLog.prediction?.district && (
+                        <div><span className="text-text-muted">Origin:</span> <span className="font-medium">{selectedLog.prediction.district}</span></div>
+                      )}
+                      {selectedLog.destination && (
+                        <div><span className="text-text-muted">Destination:</span> <span className="font-medium">{selectedLog.destination}</span></div>
+                      )}
+                      {selectedLog.distance_km != null && selectedLog.distance_km !== '' && (
+                        <div><span className="text-text-muted">Distance:</span> <span className="font-medium">{selectedLog.distance_km} km</span></div>
+                      )}
+                      {selectedLog.eta_hours != null && selectedLog.eta_hours !== '' && (
+                        <div><span className="text-text-muted">Est. Arrival:</span> <span className="font-medium">{parseFloat(selectedLog.eta_hours).toFixed(1)} hrs</span></div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {selectedLog.prediction && (
+                    <div className="border border-white/40 rounded-xl p-5 bg-white/40 dark:bg-white/5 shadow-sm backdrop-blur-md mt-4">
+                      <h3 className="font-semibold text-secondary mb-3 text-lg">Predicted Loss Metrics</h3>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-6 text-sm">
+                        <div><span className="text-text-muted">Vol. Loss:</span> <span className="font-bold text-lg ml-1">{selectedLog.prediction.loss_percentage}%</span></div>
+                        <div><span className="text-text-muted">Fin. Loss:</span> <span className="font-bold text-lg text-red-400 ml-1">~ ₹{Math.round(selectedLog.prediction.financial_loss).toLocaleString()}</span></div>
+                        <div><span className="text-text-muted">Mandi Price:</span> <span className="font-bold text-lg ml-1">₹{selectedLog.prediction.mandi_price_per_kg}/kg</span></div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="p-4 border-t border-white/30 bg-white/40 dark:bg-black/40 flex justify-end">
+                <Button onClick={() => setSelectedLog(null)} variant="primary" className="!py-2 !px-6">
+                  Close
+                </Button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

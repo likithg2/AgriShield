@@ -13,6 +13,12 @@ const Warehouse = () => {
   const [warehouse, setWarehouse] = useState(null);
   const [allWarehouses, setAllWarehouses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentTime, setCurrentTime] = useState(Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
   
   // Configuration State
   const [simulateFault, setSimulateFault] = useState(false);
@@ -89,16 +95,32 @@ const Warehouse = () => {
   if (user.role !== 'warehouse_manager' && user.role !== 'admin') return <Navigate to="/dashboard" />;
 
   // Computed data
-  const activeShipments = allShipments.filter(s => s.status === 'In Transit');
+  const activeShipments = allShipments.filter(s => s.status === 'In Transit' || s.status === 'Delivered');
   const inventory = allShipments.filter(s => 
     s.status === 'In Storage'
   ).map(s => {
-    let hr = Math.max(1.0, (s.shelf_days_calculated || 0) * 24.0);
-    let effectiveRisk = s.risk_status;
+    let baseShelfDays = s.shelf_days_calculated || 0;
+    if (s.created_at) {
+      const createdDate = new Date(s.created_at);
+      const daysElapsed = (currentTime - createdDate.getTime()) / (1000 * 60 * 60 * 24);
+      baseShelfDays = Math.max(0, baseShelfDays - daysElapsed);
+    }
+    let hr = baseShelfDays * 24.0;
+    
     if (simulateFault) {
       hr = hr / 2.8;
+    }
+    
+    // Automatically update risk status based on dynamic hours remaining
+    const daysLeft = hr / 24.0;
+    let effectiveRisk = 'LOW';
+    if (daysLeft < 2) effectiveRisk = 'HIGH';
+    else if (daysLeft < 5) effectiveRisk = 'MEDIUM';
+    
+    if (simulateFault && hr < 48) {
       effectiveRisk = 'HIGH (TEMP FAULT)';
     }
+
     return { ...s, computed_hours_remaining: hr, risk_status: effectiveRisk };
   }).sort((a, b) => {
     const riskVal = (r) => (r || '').includes('HIGH') ? 0 : (r || '').includes('MEDIUM') ? 1 : 2;
@@ -430,6 +452,7 @@ const Warehouse = () => {
                     <th className="py-2 pr-4">Weight</th>
                     <th className="py-2 pr-4">Road Condition</th>
                     <th className="py-2 pr-4">ETA (hrs)</th>
+                    <th className="py-2 pr-4">Status</th>
                     <th className="py-2 pr-4">AI Risk Level</th>
                   </tr>
                 </thead>
@@ -438,12 +461,15 @@ const Warehouse = () => {
                     <tr key={s.id} className="border-b border-glass-border/30 hover:bg-white/5 transition-colors">
                       <td className="py-3 pr-4 font-medium">
                         {s.booking_id}
-                        {s.vehicle_reg_number && <><br/><span className="text-xs text-text-muted">{s.vehicle_reg_number}</span></>}
+                        {s.vehicle_reg_number && <><br/><span className="text-xs text-text-muted">Vehicle: {s.vehicle_reg_number}</span></>}
                       </td>
                       <td className="py-3 pr-4">{s.crop}</td>
                       <td className="py-3 pr-4">{s.tonnage} t</td>
                       <td className="py-3 pr-4">{s.route_quality}</td>
-                      <td className="py-3 pr-4">{s.eta_hours ? parseFloat(s.eta_hours).toFixed(1) : '-'}</td>
+                      <td className="py-3 pr-4">{s.status === 'Delivered' ? 'N/A' : (s.eta_hours ? parseFloat(s.eta_hours).toFixed(1) : '-')}</td>
+                      <td className="py-3 pr-4 font-bold capitalize">
+                        {s.status === 'Delivered' ? <span className="text-success">Reached</span> : <span className="text-primary">In Transit</span>}
+                      </td>
                       <td className="py-3 pr-4">
                         {simulateFault ? (
                           <span className="px-2 py-1 rounded-full text-xs font-bold bg-danger/20 text-danger animate-pulse">
@@ -542,10 +568,13 @@ const Warehouse = () => {
                                       { bg: 'bg-success/10', border: 'border-success/30', text: 'text-success' };
 
               return (
-                <GlassCard key={s.id} className={`p-4 flex flex-col ${colors.bg} border-l-4 border-l-[${isHigh?'#dc3545':isMed?'#ffc107':'#28a745'}] transition-transform hover:-translate-y-1`}>
+                <GlassCard key={s.id} className={`p-4 flex flex-col ${colors.bg} border-l-4 ${colors.border} transition-transform hover:-translate-y-1`}>
                   <div className="flex justify-between items-center mb-3 pb-3 border-b border-glass-border">
                     <div className="flex items-center gap-2">
                       <span className="bg-white/50 dark:bg-black/50 px-2 py-1 rounded text-sm font-bold">📦 #{s.booking_id}</span>
+                      {s.vehicle_reg_number && (
+                        <span className="bg-white/50 dark:bg-black/50 px-2 py-1 rounded text-xs font-mono text-text-muted">Vehicle: {s.vehicle_reg_number}</span>
+                      )}
                       <span className={`text-xs px-2 py-1 rounded-full font-bold bg-white/50 dark:bg-black/50 ${colors.text}`}>{s.risk_status}</span>
                     </div>
                     <div className={`font-bold ${colors.text} flex items-center gap-1`}>

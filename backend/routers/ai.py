@@ -64,15 +64,16 @@ def get_crop_suggestions(
         4. Make the crop names visually distinguishable by using **bold text**.
         5. Keep the response concise and strictly adhere to this format.
         6. MUST provide the ENTIRE response in the following language: {resolved_lang}.
+        7. CRITICAL: DO NOT copy the examples below. Generate REAL, UNIQUE crop recommendations based on the actual weather data provided.
 
-        Example of REQUIRED output format:
-        Namaste! Here are 3 profitable crops suited for your area...
+        Example of REQUIRED structural format:
+        Namaste! Here are 3 profitable crops suited for your area over the next 3 months...
 
-        1. 🍅 **Tomato**: Moderate temperatures are ideal for tomato cultivation without extreme heat stress. Tomatoes have high demand.
+        1. 🌾 **[Crop A Name]**: [Brief 2-sentence explanation of why it thrives in {weather_data['temp']}°C and current humidity, and its market demand].
 
-        2. 🫘 **French Beans**: The pleasant weather supports rapid growth. They command high prices in local markets.
+        2. 🌿 **[Crop B Name]**: [Brief 2-sentence explanation of why it thrives in {weather_data['temp']}°C and current humidity, and its market demand].
 
-        3. 🌿 **Coriander**: Overcast skies protect tender leaves, while humidity helps with steady germination.
+        3. 🌻 **[Crop C Name]**: [Brief 2-sentence explanation of why it thrives in {weather_data['temp']}°C and current humidity, and its market demand].
         """
         
         response = model.generate_content(prompt)
@@ -117,7 +118,7 @@ def chat_with_ai(
                 context_str += f"- Crop: {s.crop}, Qty: {s.tonnage} tons, Status: {s.status.value if hasattr(s.status, 'value') else s.status}, Expected Spoilage Time: {s.shelf_days_calculated} days\n"
         
         system_instruction = f"""
-        You are 'AgriPredict AI', an expert agricultural assistant in India.
+        You are 'AgriShield AI', an expert agricultural assistant in India.
         
         Use your extensive knowledge base to answer ANY questions the farmer has about crop prices, market trends, pest control, weather patterns, and general farming advice for any region or crop. Do NOT say you only have data on their shipments.
         

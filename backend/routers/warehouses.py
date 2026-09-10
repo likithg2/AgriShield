@@ -84,8 +84,8 @@ def gate_inspection(
 
     if not shipment:
         raise HTTPException(status_code=404, detail="Shipment not found.")
-    if shipment.status != ShipmentStatus.in_transit:
-        raise HTTPException(status_code=400, detail="Shipment is not in transit.")
+    if shipment.status not in [ShipmentStatus.in_transit, ShipmentStatus.delivered]:
+        raise HTTPException(status_code=400, detail="Shipment is not in transit or delivered.")
 
     # Calculate new risk based on inspection
     new_risk = "LOW RISK"

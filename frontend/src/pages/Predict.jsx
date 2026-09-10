@@ -53,7 +53,7 @@ const Prediction = () => {
     actual_transit_days: 3.0,
     expected_transit_days: 1.5,
     harvest_date: new Date().toISOString().split('T')[0],
-    quantity_tons: 10.0
+    quantity_tons: ''
   });
 
   const [loading, setLoading] = useState(false);
@@ -377,7 +377,7 @@ const Prediction = () => {
       actual_transit_days: 3.0,
       expected_transit_days: 1.5,
       harvest_date: new Date().toISOString().split('T')[0],
-      quantity_tons: 10.0
+      quantity_tons: ''
     });
   };
 
@@ -615,11 +615,25 @@ const Prediction = () => {
                 </div>
                 <div>
                   <label className="text-xs text-text-muted font-medium mb-1 block">Quantity (Tons)</label>
-                  <input type="number" step="0.1" name="quantity_tons" value={formData.quantity_tons} onChange={handleChange} className="input-field bg-primary/5 w-full" required />
+                  <input type="number" step="0.1" name="quantity_tons" value={formData.quantity_tons} onChange={handleChange} placeholder="e.g. 10" className="input-field bg-primary/5 w-full" required />
                 </div>
                 <div>
                   <label className="text-xs text-text-muted font-medium mb-1 block">Harvest Date</label>
-                  <input type="date" name="harvest_date" value={formData.harvest_date} onChange={handleChange} max={new Date().toISOString().split('T')[0]} className="input-field bg-primary/5 w-full" />
+                  <input 
+                    type="date" 
+                    name="harvest_date" 
+                    value={formData.harvest_date} 
+                    onChange={handleChange} 
+                    max={new Date().toISOString().split('T')[0]} 
+                    className="input-field bg-primary/5 w-full cursor-pointer"
+                    onClick={(e) => {
+                      try {
+                        if (typeof e.target.showPicker === 'function') {
+                          e.target.showPicker();
+                        }
+                      } catch (err) {}
+                    }}
+                  />
                 </div>
                 <div>
                   <label className="text-xs text-text-muted font-medium mb-1 block">Temp (°C)</label>
@@ -717,8 +731,8 @@ const Prediction = () => {
                       <div className="text-2xl font-bold">{((predictionResult.loss_percentage / 100) * formData.quantity_tons).toFixed(2)} T</div>
                     </div>
                     <div className="bg-background/40 p-4 rounded-xl border border-white/5">
-                      <div className="text-xs text-text-muted uppercase tracking-wider mb-1">Financial Loss</div>
-                      <div className="text-2xl font-bold text-red-400">₹{predictionResult.financial_loss.toLocaleString()}</div>
+                      <div className="text-xs text-text-muted uppercase tracking-wider mb-1">Est. Financial Loss</div>
+                      <div className="text-2xl font-bold text-red-400">~ ₹{Math.round(predictionResult.financial_loss).toLocaleString()}</div>
                     </div>
                   </div>
                 </div>

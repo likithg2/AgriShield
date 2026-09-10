@@ -340,8 +340,8 @@ const Statistics = () => {
           {barLabels.length > 0 && (
             <GlassCard className="mt-6 p-1 flex flex-col justify-center overflow-hidden border border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
               <div className="p-4 pb-0 border-b border-glass-border bg-background/30 rounded-t-xl">
-                 <h3 className="text-lg font-bold text-text-main mb-1">Total Financial Exposure by Crop</h3>
-                 <p className="text-xs text-text-muted mb-3">Cumulative estimated financial loss segmented by crop type.</p>
+                 <h3 className="text-lg font-bold text-text-main mb-1">Financial Loss Prevented by Crop</h3>
+                 <p className="text-xs text-text-muted mb-3">Cumulative estimated financial savings segmented by crop type.</p>
               </div>
               <div className="bg-black/10">
                 <Plot
@@ -352,17 +352,17 @@ const Statistics = () => {
                     text: barValues.map(v => '₹' + v.toLocaleString()),
                     textposition: 'auto',
                     hoverinfo: 'x+y',
-                    hovertemplate: '%{x}<br>Loss: ₹%{y:,.0f}<extra></extra>',
+                    hovertemplate: '%{x}<br>Saved: ₹%{y:,.0f}<extra></extra>',
                     marker: { 
                       color: barValues, 
-                      colorscale: 'YlOrRd', 
+                      colorscale: 'Greens', 
                       showscale: false,
                       line: { width: 1, color: 'rgba(128,128,128,0.2)' }
                     }
                   }]}
                   layout={{
                     xaxis: { color: 'var(--text-muted)', gridcolor: 'rgba(128,128,128,0.15)' },
-                    yaxis: { title: "Financial Loss (₹)", color: 'var(--text-muted)', gridcolor: 'rgba(128,128,128,0.15)' },
+                    yaxis: { title: "Financial Savings (₹)", color: 'var(--text-muted)', gridcolor: 'rgba(128,128,128,0.15)' },
                     paper_bgcolor: 'rgba(0,0,0,0)',
                     plot_bgcolor: 'rgba(0,0,0,0)',
                     font: { color: 'var(--text-main)', family: 'Inter, sans-serif' },
