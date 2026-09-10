@@ -108,10 +108,15 @@ async def background_monitoring_loop():
                         if warehouse and warehouse.base_temp_c and warehouse.base_temp_c > 10.0:
                             hr = hr / 2.8
                             
-                        if hr < 48.0 and shipment.risk_status != "HIGH":
-                            shipment.risk_status = "HIGH"
-                            # We don't auto-dispatch here anymore, just mark as high risk
-
+                        if hr < 10.0:
+                            new_risk = "HIGH"
+                        elif hr <= 24.0:
+                            new_risk = "MEDIUM"
+                        else:
+                            new_risk = "LOW"
+                            
+                        if shipment.risk_status != new_risk:
+                            shipment.risk_status = new_risk
                         if hr <= 1.0 and shipment.status == ShipmentStatus.in_storage:
                             # Auto-dispatch logic for <= 1 hour
                             shipment.status = ShipmentStatus.awaiting_pickup

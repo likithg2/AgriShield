@@ -112,12 +112,11 @@ const Warehouse = () => {
     }
     
     // Automatically update risk status based on dynamic hours remaining
-    const daysLeft = hr / 24.0;
     let effectiveRisk = 'LOW';
-    if (daysLeft < 2) effectiveRisk = 'HIGH';
-    else if (daysLeft < 5) effectiveRisk = 'MEDIUM';
+    if (hr < 10) effectiveRisk = 'HIGH';
+    else if (hr <= 24) effectiveRisk = 'MEDIUM';
     
-    if (simulateFault && hr < 48) {
+    if (simulateFault && hr < 24) {
       effectiveRisk = 'HIGH (TEMP FAULT)';
     }
 
