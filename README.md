@@ -17,8 +17,11 @@ The system combines Machine Learning, Deep Learning, weather data, route optimiz
 - 🗺️ Cold Storage Recommendation
 - 💰 Financial Loss Estimation
 - 🔊 AI-generated Voice Advisory
+- 🤖 AI Chatbot Assistant (HarvestGuard AI)
 - 🌐 Multi-language Support (English & Kannada)
-- 📊 Interactive Dashboard
+- 📊 Interactive Dashboard with Historical Data & Statistics
+- 🏭 Warehouse Management & Logs
+- 🔐 Secure User Authentication (JWT)
 - 🔌 Backend API powered by FastAPI
 - 💻 Modern React Frontend with Tailwind CSS
 
