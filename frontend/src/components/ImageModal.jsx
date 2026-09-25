@@ -29,7 +29,7 @@ export default function ImageModal({ isOpen, onClose, imageSrc }) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-          className="fixed inset-0 z-[100] flex items-center justify-center p-6"
+          className="fixed inset-x-0 bottom-0 top-[88px] z-40 flex items-center justify-center p-6"
           onClick={onClose}
           style={{
             background: `

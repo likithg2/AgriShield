@@ -45,9 +45,7 @@ const ChatWidget = () => {
   const { t, language } = useContext(LanguageContext);
   const { user } = useContext(AuthContext);
 
-  if (!user || user.role !== 'farmer') {
-    return null;
-  }
+
 
   const fetchSessions = async () => {
     try {
@@ -254,6 +252,10 @@ const ChatWidget = () => {
       }
     }
   };
+
+  if (!user || user.role !== 'farmer') {
+    return null;
+  }
 
   return (
     <>

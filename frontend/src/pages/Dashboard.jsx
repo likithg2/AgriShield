@@ -2,11 +2,13 @@ import React, { useContext, useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { AuthContext } from '../context/AuthContext';
+import { NotificationContext } from '../context/NotificationContext';
 import GlassCard from '../components/GlassCard';
 import Button from '../components/Button';
-import { farmersAPI, notificationsAPI, authAPI, shipmentsAPI } from '../utils/api';
+import { farmersAPI, authAPI, shipmentsAPI } from '../utils/api';
 import { Package, Trash2, Bell, Edit2, Check, X, Truck, AlertTriangle, Search, Filter, KeyRound, Eye, EyeOff, History } from 'lucide-react';
 import { useResendTimer } from '../hooks/useResendTimer';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const getCropEmoji = (crop) => {
   const map = { "Tomato": "🍅", "Onion": "🧅", "Cucumber": "🥒", "Potato": "🥔" };
@@ -15,11 +17,12 @@ const getCropEmoji = (crop) => {
 
 const Dashboard = () => {
   const { user, login, logout, selectedAdminWarehouseId, setAdminWarehouse } = useContext(AuthContext); // we can use login() to update user state if needed, or just reload
+  const { notifications: globalNotifs, openNotification } = useContext(NotificationContext) || { notifications: [] };
   
   const [dashboardData, setDashboardData] = useState(null);
   const [managerData, setManagerData] = useState(null);
-  const [notifications, setNotifications] = useState([]);
   const [allWarehouses, setAllWarehouses] = useState([]);
+  const [whShipmentIds, setWhShipmentIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
   
   // Profile Edit State
@@ -33,7 +36,6 @@ const Dashboard = () => {
   const [updateMsg, setUpdateMsg] = useState({ type: '', text: '' });
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showNotificationHistory, setShowNotificationHistory] = useState(false);
-  const [selectedNotification, setSelectedNotification] = useState(null);
   const [selectedActiveShipment, setSelectedActiveShipment] = useState(null);
 
   const handleDeleteAccount = async () => {
@@ -77,11 +79,8 @@ const Dashboard = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const notifRes = await notificationsAPI.list();
-      let notifs = notifRes.data;
 
       if (user.role === 'farmer') {
-        setNotifications(notifs);
         const res = await farmersAPI.getDashboard();
         setDashboardData(res.data);
       } else {
@@ -105,11 +104,10 @@ const Dashboard = () => {
         let shipments = allShipmentsRes.data;
         if (selectedWh) {
           shipments = shipments.filter(s => s.destination === selectedWh.facility_name);
-          const whShipmentIds = new Set(shipments.map(s => s.id));
-          notifs = notifs.filter(n => n.shipment_id ? whShipmentIds.has(n.shipment_id) : true);
+          setWhShipmentIds(new Set(shipments.map(s => s.id)));
+        } else {
+          setWhShipmentIds(new Set());
         }
-        
-        setNotifications(notifs);
 
         setManagerData({
           refrig_fault: selectedWh?.base_temp_c > 10.0,
@@ -126,16 +124,9 @@ const Dashboard = () => {
     }
   };
 
-  const handleMarkAsRead = async (id) => {
-    try {
-      await notificationsAPI.markAsRead(id);
-      setNotifications(notifications.map(n => 
-        n.id === id ? { ...n, is_read: true } : n
-      ));
-    } catch (err) {
-      console.error("Failed to mark as read", err);
-    }
-  };
+  const displayNotifs = user?.role === 'farmer' 
+    ? globalNotifs 
+    : globalNotifs.filter(n => n.shipment_id ? whShipmentIds.has(n.shipment_id) : true);
 
   const handleProfileUpdate = async (e) => {
     e.preventDefault();
@@ -536,25 +527,17 @@ const Dashboard = () => {
           </div>
           <GlassCard className="p-0 overflow-hidden">
             <div className={`overflow-y-auto ${user?.role === 'farmer' ? 'max-h-[850px]' : 'max-h-[450px]'}`}>
-              {notifications.filter(n => !n.is_read).length > 0 ? (
+              {displayNotifs.filter(n => !n.is_read).length > 0 ? (
                 <div className="divide-y divide-glass-border">
-                  {(user?.role === 'farmer' ? notifications.filter(n => !n.is_read).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 10) : notifications.filter(n => !n.is_read).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5)).map(notif => (
+                  {(user?.role === 'farmer' ? displayNotifs.filter(n => !n.is_read).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 10) : displayNotifs.filter(n => !n.is_read).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5)).map(notif => (
                     <div key={notif.id} 
                          className="p-4 bg-primary/5 hover:bg-primary/10 cursor-pointer transition-colors"
-                         onClick={() => setSelectedNotification(notif)}>
+                         onClick={() => openNotification(notif)}>
                       <div className="flex justify-between items-start gap-2 mb-1">
                         <h4 className="font-semibold text-sm flex items-center gap-2">
                           {notif.type === 'dispatch_alert' && <AlertTriangle size={14} className="text-warning" />}
                           {notif.title}
                         </h4>
-                        {!notif.is_read && (
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); handleMarkAsRead(notif.id); }}
-                            className="text-xs text-primary hover:underline whitespace-nowrap"
-                          >
-                            Mark read
-                          </button>
-                        )}
                       </div>
                       <p className="text-sm text-text-muted mb-2 line-clamp-1">{notif.message.split('\n')[0]}</p>
                       <span className="text-xs text-text-muted/50">
@@ -633,11 +616,11 @@ const Dashboard = () => {
               </button>
             </div>
             <div className="overflow-y-auto flex-1 pr-2 space-y-2">
-              {notifications.length > 0 ? (
-                notifications.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).map(notif => (
+              {displayNotifs.length > 0 ? (
+                displayNotifs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).map(notif => (
                   <div key={notif.id} 
                        className={`p-4 hover:bg-white/5 cursor-pointer transition-colors ${!notif.is_read ? 'bg-primary/10' : ''}`}
-                       onClick={() => setSelectedNotification(notif)}>
+                       onClick={() => { setShowNotificationHistory(false); openNotification(notif); }}>
                     <div className="flex justify-between items-start mb-1">
                       <h4 className="font-bold flex items-center gap-2 text-gray-900 dark:text-white">
                         {notif.type === 'dispatch_alert' && <AlertTriangle size={16} className="text-warning" />}
@@ -660,9 +643,19 @@ const Dashboard = () => {
         </div>
       )}
 
-      {showDeleteModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl max-w-md w-full shadow-2xl space-y-6 border border-glass-border">
+      <AnimatePresence>
+        {showDeleteModal && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-x-0 bottom-0 top-[88px] z-40 flex items-center justify-center bg-white/20 dark:bg-black/40 backdrop-blur-md p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }} 
+              animate={{ scale: 1, opacity: 1, y: 0 }} 
+              exit={{ scale: 0.95, opacity: 0, y: 20 }} 
+              transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
+              className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-2xl p-6 rounded-3xl max-w-md w-full shadow-[0_8px_32px_rgba(0,0,0,0.1)] space-y-6 border border-white/60 dark:border-white/10"
+            >
             <div className="flex flex-col items-center text-center space-y-2">
               <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-danger mb-2">
                 <Trash2 size={32} />
@@ -676,50 +669,26 @@ const Dashboard = () => {
               <Button type="button" variant="secondary" className="flex-1 justify-center" onClick={() => setShowDeleteModal(false)}>Cancel</Button>
               <Button type="button" className="flex-1 justify-center bg-danger hover:bg-red-600 text-white border-0" onClick={handleDeleteAccount}>Yes, Delete</Button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* NOTIFICATION DETAILS MODAL */}
-      {selectedNotification && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-md z-[60] flex items-center justify-center p-4">
-          <div className="w-full max-w-lg flex flex-col p-0 border border-white/60 shadow-[0_8px_32px_rgba(255,255,255,0.15)] overflow-hidden rounded-2xl bg-white/70 dark:bg-white/10 backdrop-blur-2xl">
-            <div className="p-4 border-b border-white/30 flex justify-between items-center bg-white/40 dark:bg-black/40">
-              <h2 className="text-lg font-bold flex items-center gap-2 text-text-main">
-                {selectedNotification.type === 'dispatch_alert' ? <AlertTriangle size={20} className="text-warning" /> : <Bell size={20} className="text-primary" />}
-                {selectedNotification.title}
-              </h2>
-              <button 
-                onClick={() => setSelectedNotification(null)}
-                className="p-1 rounded-full hover:bg-white/10 text-text-muted hover:text-white transition-colors"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            
-            <div className="p-6 overflow-y-auto max-h-[60vh]">
-              <span className="text-xs text-text-muted block mb-4 border-b border-white/5 pb-2">
-                Received: {new Date(selectedNotification.created_at).toLocaleString()}
-              </span>
-              <div className="text-sm text-text-main whitespace-pre-wrap leading-relaxed">
-                {selectedNotification.message}
-              </div>
-            </div>
-            
-            <div className="p-4 border-t border-glass-border bg-white/5 dark:bg-black/20 flex justify-end">
-              <Button onClick={() => setSelectedNotification(null)} variant="primary" className="!py-2 !px-6">
-                Close
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ACTIVE SHIPMENT DETAILS MODAL */}
-      {selectedActiveShipment && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-md z-[60] flex items-center justify-center p-4">
-          <div className="w-full max-w-2xl flex flex-col p-0 border border-white/60 shadow-[0_8px_32px_rgba(255,255,255,0.15)] overflow-hidden rounded-2xl bg-white/70 dark:bg-white/10 backdrop-blur-2xl">
-            <div className="p-4 border-b border-white/30 flex justify-between items-center bg-white/40 dark:bg-black/40">
+      <AnimatePresence>
+        {selectedActiveShipment && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-x-0 bottom-0 top-[88px] z-40 flex items-center justify-center bg-white/20 dark:bg-black/40 backdrop-blur-md p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }} 
+              animate={{ scale: 1, opacity: 1, y: 0 }} 
+              exit={{ scale: 0.95, opacity: 0, y: 20 }} 
+              transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
+              className="w-full max-w-2xl flex flex-col p-0 border border-white/60 dark:border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.1)] overflow-hidden rounded-3xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-2xl"
+            >
+            <div className="p-4 border-b border-white/30 dark:border-white/10 flex justify-between items-center bg-white/40 dark:bg-black/20">
               <h2 className="text-xl font-bold flex items-center gap-2 text-text-main">
                 <Truck size={20} className="text-primary" /> Shipment #{selectedActiveShipment.booking_id}
               </h2>
@@ -807,9 +776,10 @@ const Dashboard = () => {
                 Close
               </Button>
             </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

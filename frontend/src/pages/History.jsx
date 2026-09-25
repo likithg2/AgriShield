@@ -6,6 +6,7 @@ import GlassCard from '../components/GlassCard';
 import Button from '../components/Button';
 import { History as HistoryIcon, ChevronLeft, ChevronRight, Download, X } from 'lucide-react';
 import ImageModal from '../components/ImageModal';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const getCropEmoji = (crop) => {
   const map = { "Tomato": "🍅", "Onion": "🧅", "Cucumber": "🥒", "Potato": "🥔" };
@@ -233,10 +234,20 @@ const History = () => {
       <ImageModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} imageSrc={modalImageSrc} />
 
       {/* PREDICTION DETAILS MODAL */}
-      {selectedPrediction && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-          <div className="w-full max-w-2xl flex flex-col p-0 border border-white/30 shadow-[0_0_40px_rgba(0,0,0,0.3)] overflow-hidden rounded-2xl bg-white/30 dark:bg-gray-900/60 backdrop-blur-xl">
-            <div className="p-4 border-b border-glass-border flex justify-between items-center bg-white/10 dark:bg-black/20">
+      <AnimatePresence>
+        {selectedPrediction && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-x-0 bottom-0 top-[88px] z-40 flex items-center justify-center bg-white/20 dark:bg-black/40 backdrop-blur-md p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }} 
+              animate={{ scale: 1, opacity: 1, y: 0 }} 
+              exit={{ scale: 0.95, opacity: 0, y: 20 }} 
+              transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
+              className="w-full max-w-2xl flex flex-col p-0 border border-white/60 dark:border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.1)] overflow-hidden rounded-3xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-2xl"
+            >
+            <div className="p-4 border-b border-white/30 dark:border-white/10 flex justify-between items-center bg-white/40 dark:bg-black/20">
               <h2 className="text-xl font-bold flex items-center gap-2 text-text-main">
                 {getCropEmoji(selectedPrediction.crop)} Prediction #{`PRED-${selectedPrediction.id.toString().padStart(4, '0')}`}
               </h2>
@@ -330,9 +341,10 @@ const History = () => {
                 Close
               </Button>
             </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

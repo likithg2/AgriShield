@@ -6,6 +6,7 @@ import GlassCard from '../components/GlassCard';
 import Button from '../components/Button';
 import { Package, Truck, ShieldAlert, AlertTriangle, Settings, CheckCircle, Save, Calendar, Search, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const Warehouse = () => {
   const { user, selectedAdminWarehouseId, setAdminWarehouse } = useContext(AuthContext);
@@ -739,9 +740,19 @@ const Warehouse = () => {
       )}
 
       {/* MODALS */}
-      {dispatchConfirm.show && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl max-w-md w-full shadow-2xl space-y-6 border border-glass-border">
+      <AnimatePresence>
+        {dispatchConfirm.show && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-x-0 bottom-0 top-[88px] z-40 flex items-center justify-center bg-white/20 dark:bg-black/40 backdrop-blur-md p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }} 
+              animate={{ scale: 1, opacity: 1, y: 0 }} 
+              exit={{ scale: 0.95, opacity: 0, y: 20 }} 
+              transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
+              className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-2xl p-6 rounded-3xl max-w-md w-full shadow-[0_8px_32px_rgba(0,0,0,0.1)] space-y-6 border border-white/60 dark:border-white/10"
+            >
             <div className="flex flex-col items-center text-center space-y-2">
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-2">
                 <Truck size={32} />
@@ -755,13 +766,24 @@ const Warehouse = () => {
               <Button type="button" variant="secondary" className="flex-1 justify-center" onClick={() => setDispatchConfirm({ show: false, shipmentId: null, action: null })}>Cancel</Button>
               <Button type="button" className="flex-1 justify-center bg-primary text-white border-0" onClick={confirmDispatch}>Yes, Proceed</Button>
             </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {inspectConfirm && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl max-w-md w-full shadow-2xl space-y-6 border border-glass-border">
+      <AnimatePresence>
+        {inspectConfirm && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-x-0 bottom-0 top-[88px] z-40 flex items-center justify-center bg-white/20 dark:bg-black/40 backdrop-blur-md p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }} 
+              animate={{ scale: 1, opacity: 1, y: 0 }} 
+              exit={{ scale: 0.95, opacity: 0, y: 20 }} 
+              transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
+              className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-2xl p-6 rounded-3xl max-w-md w-full shadow-[0_8px_32px_rgba(0,0,0,0.1)] space-y-6 border border-white/60 dark:border-white/10"
+            >
             <div className="flex flex-col items-center text-center space-y-2">
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-2">
                 <CheckCircle size={32} />
@@ -775,13 +797,24 @@ const Warehouse = () => {
               <Button type="button" variant="secondary" className="flex-1 justify-center" onClick={() => setInspectConfirm(false)}>Cancel</Button>
               <Button type="button" className="flex-1 justify-center bg-primary text-white border-0" onClick={confirmInspect}>Yes, Log It</Button>
             </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {configConfirm && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl max-w-md w-full shadow-2xl space-y-6 border border-glass-border">
+      <AnimatePresence>
+        {configConfirm && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-x-0 bottom-0 top-[88px] z-40 flex items-center justify-center bg-white/20 dark:bg-black/40 backdrop-blur-md p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }} 
+              animate={{ scale: 1, opacity: 1, y: 0 }} 
+              exit={{ scale: 0.95, opacity: 0, y: 20 }} 
+              transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
+              className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-2xl p-6 rounded-3xl max-w-md w-full shadow-[0_8px_32px_rgba(0,0,0,0.1)] space-y-6 border border-white/60 dark:border-white/10"
+            >
             <div className="flex flex-col items-center text-center space-y-2">
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-2">
                 <Save size={32} />
@@ -795,9 +828,10 @@ const Warehouse = () => {
               <Button type="button" variant="secondary" className="flex-1 justify-center" onClick={() => setConfigConfirm(false)}>Cancel</Button>
               <Button type="button" className="flex-1 justify-center bg-primary text-white border-0" onClick={confirmConfigSave}>Yes, Commit</Button>
             </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

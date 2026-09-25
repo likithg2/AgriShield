@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
+import { NotificationProvider } from './context/NotificationContext';
 import TopBar from './components/TopBar';
 
 import Home from './pages/Home';
@@ -35,25 +36,27 @@ function App() {
       <ThemeProvider>
         <LanguageProvider>
           <AuthProvider>
-            <div className="app-container relative">
-              <TopBar />
-              <ChatWidget />
-              
-              <main className="main-content">
-                <Routes>
-                  <Route path="/" element={<Home />} />
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-                  <Route path="/predict" element={<ProtectedRoute><Predict /></ProtectedRoute>} />
-                  <Route path="/warehouse" element={<ProtectedRoute><Warehouse /></ProtectedRoute>} />
-                  <Route path="/warehouse-logs" element={<ProtectedRoute><WarehouseLogs /></ProtectedRoute>} />
-                  <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
-                  <Route path="/statistics" element={<ProtectedRoute><Statistics /></ProtectedRoute>} />
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </main>
-              <Toaster position="top-right" toastOptions={{ className: 'glass-card text-white bg-background border border-white/10' }} />
-            </div>
+            <NotificationProvider>
+              <div className="app-container relative">
+                <TopBar />
+                <ChatWidget />
+                
+                <main className="main-content">
+                  <Routes>
+                    <Route path="/" element={<Home />} />
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                    <Route path="/predict" element={<ProtectedRoute><Predict /></ProtectedRoute>} />
+                    <Route path="/warehouse" element={<ProtectedRoute><Warehouse /></ProtectedRoute>} />
+                    <Route path="/warehouse-logs" element={<ProtectedRoute><WarehouseLogs /></ProtectedRoute>} />
+                    <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
+                    <Route path="/statistics" element={<ProtectedRoute><Statistics /></ProtectedRoute>} />
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
+                </main>
+                <Toaster position="top-right" containerStyle={{ top: '100px' }} toastOptions={{ className: 'glass-card text-white bg-background border border-white/10' }} />
+              </div>
+            </NotificationProvider>
           </AuthProvider>
         </LanguageProvider>
       </ThemeProvider>
