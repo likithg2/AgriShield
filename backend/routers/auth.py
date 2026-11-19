@@ -288,7 +288,6 @@ def verify_email_otp(payload: EmailChangeVerify, current_user: User = Depends(ge
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid OTP.")
     if datetime.now(timezone.utc) > stored["expires"]:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="OTP expired.")
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="OTP expired.")
         
     current_user.email = payload.new_email
     db.commit()
