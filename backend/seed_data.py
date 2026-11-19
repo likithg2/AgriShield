@@ -5,6 +5,7 @@ Run this after setting up PostgreSQL: python -m backend.seed_data
 """
 
 import csv
+import os
 import sys
 from pathlib import Path
 
@@ -70,7 +71,7 @@ def seed_default_users(db):
             "full_name": "Admin User",
             "phone": "9999999999",
             "email": "admin@postharvest.in",
-            "password": "admin123",
+            "initial_credential": os.getenv("DEFAULT_ADMIN_PASSWORD", "admin123"),
             "role": UserRole.admin,
             "district": "Bengaluru Urban",
         },
@@ -78,7 +79,7 @@ def seed_default_users(db):
             "full_name": "Anandappa (Demo Farmer)",
             "phone": "9448098765",
             "email": "farmer@postharvest.in",
-            "password": "farmer123",
+            "initial_credential": os.getenv("DEFAULT_FARMER_PASSWORD", "farmer123"),
             "role": UserRole.farmer,
             "district": "Kolar",
         },
@@ -86,7 +87,7 @@ def seed_default_users(db):
             "full_name": "Warehouse Manager Demo",
             "phone": "9845012345",
             "email": "warehouse@postharvest.in",
-            "password": "warehouse123",
+            "initial_credential": os.getenv("DEFAULT_WAREHOUSE_PASSWORD", "warehouse123"),
             "role": UserRole.warehouse_manager,
             "district": "Kolar",
         },
@@ -102,7 +103,7 @@ def seed_default_users(db):
             full_name=user_data["full_name"],
             phone=user_data["phone"],
             email=user_data["email"],
-            password_hash=hash_password(user_data["password"]),
+            password_hash=hash_password(user_data["initial_credential"]),
             role=user_data["role"],
             district=user_data["district"],
         )

@@ -151,7 +151,7 @@ const Prediction = () => {
 
   useEffect(() => {
     if (formData.district) {
-      fetch(`http://localhost:8000/api/predictions/weather?district=${formData.district}`)
+      fetch(`http://localhost:8000/api/predictions/weather?district=${encodeURIComponent(formData.district)}`)
         .then(res => res.json())
         .then(data => {
           if (data.temp && data.humidity) {
@@ -245,8 +245,8 @@ const Prediction = () => {
       const words = transcript.split(' ');
       let foundQty = null;
       for (const w of words) {
-        const num = parseFloat(w);
-        if (!isNaN(num) && num > 0) {
+        const num = Number.parseFloat(w);
+        if (!Number.isNaN(num) && num > 0) {
           foundQty = num;
           break;
         }
@@ -300,7 +300,7 @@ const Prediction = () => {
     setActiveLang(langCode);
     if (!predictionResult) return;
     const text = langCode === 'kn' ? predictionResult.advisory_transcript_kn : predictionResult.advisory_transcript_en;
-    fetchAdvisoryAudio(text, langCode);
+    void fetchAdvisoryAudio(text, langCode);
   };
 
   const handleAnalyze = async (e) => {
@@ -330,12 +330,12 @@ const Prediction = () => {
       
       const payload = {
         ...formData,
-        temperature: parseFloat(formData.temperature) || 25.0,
-        humidity: parseFloat(formData.humidity) || 60.0,
-        actual_transit_days: parseFloat(formData.actual_transit_days) || 1.0,
-        expected_transit_days: parseFloat(formData.expected_transit_days) || 1.0,
-        storage_days: isNaN(storageDays) ? 0 : storageDays,
-        quantity_tons: parseFloat(formData.quantity_tons),
+        temperature: Number.parseFloat(formData.temperature) || 25.0,
+        humidity: Number.parseFloat(formData.humidity) || 60.0,
+        actual_transit_days: Number.parseFloat(formData.actual_transit_days) || 1.0,
+        expected_transit_days: Number.parseFloat(formData.expected_transit_days) || 1.0,
+        storage_days: Number.isNaN(storageDays) ? 0 : storageDays,
+        quantity_tons: Number.parseFloat(formData.quantity_tons),
         picture_spoilage_prob: prob,
         image_data: base64Image
       };
@@ -346,7 +346,7 @@ const Prediction = () => {
       
       // 2. Fetch Audio Advisory
       setActiveLang('en');
-      fetchAdvisoryAudio(data.advisory_transcript_en, 'en');
+      void fetchAdvisoryAudio(data.advisory_transcript_en, 'en');
       
     } catch (err) {
       let errorMsg = err.response?.data?.detail || err.message;
@@ -601,25 +601,26 @@ const Prediction = () => {
             <form onSubmit={handleAnalyze} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs text-text-muted font-medium mb-1 block">Select Crop</label>
-                  <select  name="crop" value={formData.crop} onChange={handleChange} className="input-field bg-primary/5 w-full dark:bg-black/90 dark:text-white" required>
+                  <label htmlFor="predict-crop-select" className="text-xs text-text-muted font-medium mb-1 block">Select Crop</label>
+                  <select id="predict-crop-select" name="crop" value={formData.crop} onChange={handleChange} className="input-field bg-primary/5 w-full dark:bg-black/90 dark:text-white" required>
                     <option value="">-- Select --</option>
                     {CROP_LIST.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs text-text-muted font-medium mb-1 block">District</label>
-                  <select  name="district" value={formData.district} onChange={handleChange} className="input-field bg-primary/5 w-full dark:bg-black/90 dark:text-white" required>
+                  <label htmlFor="predict-district-select" className="text-xs text-text-muted font-medium mb-1 block">District</label>
+                  <select id="predict-district-select" name="district" value={formData.district} onChange={handleChange} className="input-field bg-primary/5 w-full dark:bg-black/90 dark:text-white" required>
                     {DISTRICT_LIST.map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs text-text-muted font-medium mb-1 block">Quantity (Tons)</label>
-                  <input type="number" step="0.1" name="quantity_tons" value={formData.quantity_tons} onChange={handleChange} placeholder="e.g. 10" className="input-field bg-primary/5 w-full" required />
+                  <label htmlFor="predict-quantity-input" className="text-xs text-text-muted font-medium mb-1 block">Quantity (Tons)</label>
+                  <input id="predict-quantity-input" type="number" step="0.1" name="quantity_tons" value={formData.quantity_tons} onChange={handleChange} placeholder="e.g. 10" className="input-field bg-primary/5 w-full" required />
                 </div>
                 <div>
-                  <label className="text-xs text-text-muted font-medium mb-1 block">Harvest Date</label>
+                  <label htmlFor="predict-harvest-date-input" className="text-xs text-text-muted font-medium mb-1 block">Harvest Date</label>
                   <input 
+                    id="predict-harvest-date-input"
                     type="date" 
                     name="harvest_date" 
                     value={formData.harvest_date} 
@@ -636,16 +637,16 @@ const Prediction = () => {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-text-muted font-medium mb-1 block">Temp (°C)</label>
-                  <input type="number" step="0.1" name="temperature" value={formData.temperature} onChange={handleChange} className="input-field bg-primary/5 w-full" />
+                  <label htmlFor="predict-temperature-input" className="text-xs text-text-muted font-medium mb-1 block">Temp (°C)</label>
+                  <input id="predict-temperature-input" type="number" step="0.1" name="temperature" value={formData.temperature} onChange={handleChange} className="input-field bg-primary/5 w-full" />
                 </div>
                 <div>
-                  <label className="text-xs text-text-muted font-medium mb-1 block">Humidity (%)</label>
-                  <input type="number" step="0.1" name="humidity" value={formData.humidity} onChange={handleChange} className="input-field bg-primary/5 w-full" />
+                  <label htmlFor="predict-humidity-input" className="text-xs text-text-muted font-medium mb-1 block">Humidity (%)</label>
+                  <input id="predict-humidity-input" type="number" step="0.1" name="humidity" value={formData.humidity} onChange={handleChange} className="input-field bg-primary/5 w-full" />
                 </div>
                 <div className="col-span-2">
-                  <label className="text-xs text-text-muted font-medium mb-1 block">Picture Spoilage Prob</label>
-                  <input type="text" disabled value={imageAnalysis ? imageAnalysis.rotten_pct.toFixed(1) + '%' : 'Not Analyzed'} className="input-field bg-primary/5 w-full opacity-70" />
+                  <label htmlFor="predict-spoilage-prob-input" className="text-xs text-text-muted font-medium mb-1 block">Picture Spoilage Prob</label>
+                  <input id="predict-spoilage-prob-input" type="text" disabled value={imageAnalysis ? imageAnalysis.rotten_pct.toFixed(1) + '%' : 'Not Analyzed'} className="input-field bg-primary/5 w-full opacity-70" />
                 </div>
               </div>
               
@@ -891,8 +892,9 @@ const Prediction = () => {
                                   
                                   {bookingMode === 'manual' && (
                                     <div className="mb-4">
-                                      <label className="text-xs text-text-muted block mb-1">Vehicle Registration Number</label>
+                                      <label htmlFor="vehicle-reg-input" className="text-xs text-text-muted block mb-1">Vehicle Registration Number</label>
                                       <input 
+                                        id="vehicle-reg-input"
                                         type="text" 
                                         placeholder="e.g. KA01AB1234" 
                                         value={vehicleReg}

@@ -35,9 +35,13 @@ app = FastAPI(
     redoc_url="/api/redoc",
 )
 
+background_tasks = set()
+
 @app.on_event("startup")
 async def startup_event():
-    asyncio.create_task(background_monitoring_loop())
+    task = asyncio.create_task(background_monitoring_loop())
+    background_tasks.add(task)
+    task.add_done_callback(background_tasks.discard)
 
 # ── CORS Middleware (allow Streamlit frontend) ────────────────────────────────
 app.add_middleware(

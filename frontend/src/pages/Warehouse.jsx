@@ -88,7 +88,7 @@ const Warehouse = () => {
           setLoading(false);
         }
       };
-      loadData();
+      void loadData();
     }
   }, [user, selectedAdminWarehouseId]);
 
@@ -142,9 +142,9 @@ const Warehouse = () => {
     setConfigConfirm(false);
     try {
       await warehousesAPI.update(warehouse.id, {
-        occupancy_pct: parseFloat(capacityConfig.occupancy_pct),
-        price_per_ton_day: parseFloat(capacityConfig.price_per_ton_day),
-        capacity_mt: parseInt(capacityConfig.capacity_mt),
+        occupancy_pct: Number.parseFloat(capacityConfig.occupancy_pct),
+        price_per_ton_day: Number.parseFloat(capacityConfig.price_per_ton_day),
+        capacity_mt: Number.parseInt(capacityConfig.capacity_mt, 10),
         base_temp_c: simulateFault ? 14.5 : 4.0
       });
       toast.success(`Successfully updated metrics for ${warehouse.facility_name}`);
@@ -178,7 +178,7 @@ const Warehouse = () => {
         shipment_booking_id: inspectVid,
         bruising: inspectBruising,
         ripeness: inspectRipeness,
-        core_temp: parseFloat(inspectTemp)
+        core_temp: Number.parseFloat(inspectTemp)
       });
       toast.success(`Inspection logged. Vehicle ${inspectVid} docked successfully.`);
       setInspectVid('');
@@ -242,7 +242,7 @@ const Warehouse = () => {
             <span className="text-sm font-medium text-text-muted">Managing Node:</span>
             <select
               value={selectedAdminWarehouseId || ''}
-              onChange={(e) => setAdminWarehouse(parseInt(e.target.value))}
+              onChange={(e) => setAdminWarehouse(Number.parseInt(e.target.value, 10))}
               className="input-field py-1 px-3 text-sm min-w-[200px] dark:bg-black/90 dark:text-white"
             >
               {allWarehouses.map(w => (
@@ -322,16 +322,16 @@ const Warehouse = () => {
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Total Storage Quantity (Tons)</label>
-                <div className="input-field bg-background/50 cursor-not-allowed text-text-muted">{capacityConfig.capacity_mt}</div>
+                <label htmlFor="wh-capacity-mt" className="block text-sm font-medium mb-1">Total Storage Quantity (Tons)</label>
+                <input id="wh-capacity-mt" type="text" readOnly className="input-field bg-background/50 cursor-not-allowed text-text-muted w-full" value={capacityConfig.capacity_mt} />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Live Warehouse Storage Space Filled ({capacityConfig.occupancy_pct}%)</label>
-                <input type="range" className="w-full accent-primary" min="0" max="100" step="0.1" value={capacityConfig.occupancy_pct} onChange={e => setCapacityConfig({...capacityConfig, occupancy_pct: e.target.value})} />
+                <label htmlFor="wh-occupancy-range" className="block text-sm font-medium mb-1">Live Warehouse Storage Space Filled ({capacityConfig.occupancy_pct}%)</label>
+                <input id="wh-occupancy-range" type="range" className="w-full accent-primary" min="0" max="100" step="0.1" value={capacityConfig.occupancy_pct} onChange={e => setCapacityConfig({...capacityConfig, occupancy_pct: e.target.value})} />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Storage Rent Price (₹ / Ton / Day)</label>
-                <input type="number" className="input-field" value={capacityConfig.price_per_ton_day} onChange={e => setCapacityConfig({...capacityConfig, price_per_ton_day: e.target.value})} />
+                <label htmlFor="wh-price-day" className="block text-sm font-medium mb-1">Storage Rent Price (₹ / Ton / Day)</label>
+                <input id="wh-price-day" type="number" className="input-field" value={capacityConfig.price_per_ton_day} onChange={e => setCapacityConfig({...capacityConfig, price_per_ton_day: e.target.value})} />
               </div>
               
               <div className="bg-primary/10 text-primary p-3 rounded-lg text-sm font-medium">
@@ -466,7 +466,7 @@ const Warehouse = () => {
                       <td className="py-3 pr-4">{s.crop}</td>
                       <td className="py-3 pr-4">{s.tonnage} t</td>
                       <td className="py-3 pr-4">{s.route_quality}</td>
-                      <td className="py-3 pr-4">{s.status === 'Delivered' ? 'N/A' : (s.eta_hours ? parseFloat(s.eta_hours).toFixed(1) : '-')}</td>
+                      <td className="py-3 pr-4">{s.status === 'Delivered' ? 'N/A' : (s.eta_hours ? Number.parseFloat(s.eta_hours).toFixed(1) : '-')}</td>
                       <td className="py-3 pr-4 font-bold capitalize">
                         {s.status === 'Delivered' ? <span className="text-success">Reached</span> : <span className="text-primary">In Transit</span>}
                       </td>
@@ -502,8 +502,8 @@ const Warehouse = () => {
             {activeShipments.length > 0 ? (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Select Arrived Vehicle</label>
-                  <select  className="input-field dark:bg-black/90 dark:text-white" value={inspectVid} onChange={(e) => setInspectVid(e.target.value)}>
+                  <label htmlFor="inspect-vehicle-select" className="block text-sm font-medium mb-1">Select Arrived Vehicle</label>
+                  <select id="inspect-vehicle-select" className="input-field dark:bg-black/90 dark:text-white" value={inspectVid} onChange={(e) => setInspectVid(e.target.value)}>
                     <option value="">-- Select Vehicle --</option>
                     {activeShipments.map(s => <option key={s.id} value={s.booking_id}>{s.booking_id} ({s.crop})</option>)}
                   </select>
@@ -519,24 +519,24 @@ const Warehouse = () => {
                 })()}
 
                 <div>
-                  <label className="block text-sm font-medium mb-1">Actual Arrival Date</label>
-                  <input type="date" className="input-field" value={inspectDate} onChange={(e) => setInspectDate(e.target.value)} />
+                  <label htmlFor="inspect-arrival-date" className="block text-sm font-medium mb-1">Actual Arrival Date</label>
+                  <input id="inspect-arrival-date" type="date" className="input-field" value={inspectDate} onChange={(e) => setInspectDate(e.target.value)} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Sensor Recorded Transit Temp (°C)</label>
-                  <input type="number" step="0.1" className="input-field" value={inspectTemp} onChange={(e) => setInspectTemp(e.target.value)} />
+                  <label htmlFor="inspect-transit-temp" className="block text-sm font-medium mb-1">Sensor Recorded Transit Temp (°C)</label>
+                  <input id="inspect-transit-temp" type="number" step="0.1" className="input-field" value={inspectTemp} onChange={(e) => setInspectTemp(e.target.value)} />
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium mb-1">Bruising Assessment</label>
-                    <select  className="input-field dark:bg-black/90 dark:text-white" value={inspectBruising} onChange={e => setInspectBruising(e.target.value)}>
+                    <label htmlFor="inspect-bruising-select" className="block text-sm font-medium mb-1">Bruising Assessment</label>
+                    <select id="inspect-bruising-select" className="input-field dark:bg-black/90 dark:text-white" value={inspectBruising} onChange={e => setInspectBruising(e.target.value)}>
                       <option>None</option><option>Slight</option><option>Severe</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Ripeness Stage</label>
-                    <select  className="input-field dark:bg-black/90 dark:text-white" value={inspectRipeness} onChange={e => setInspectRipeness(e.target.value)}>
+                    <label htmlFor="inspect-ripeness-select" className="block text-sm font-medium mb-1">Ripeness Stage</label>
+                    <select id="inspect-ripeness-select" className="input-field dark:bg-black/90 dark:text-white" value={inspectRipeness} onChange={e => setInspectRipeness(e.target.value)}>
                       <option>Unripe</option><option>Optimal Balance</option><option>Overripe / Soft</option>
                     </select>
                   </div>
@@ -700,7 +700,7 @@ const Warehouse = () => {
                           {(w.capacity_mt * (1 - w.occupancy_pct / 100)).toFixed(1)} t
                           <span className="text-text-muted text-xs ml-1">({(100 - w.occupancy_pct).toFixed(1)}%)</span>
                         </td>
-                        <td className="py-3 text-sm text-right">{parseFloat(w.occupancy_pct).toFixed(1)}%</td>
+                        <td className="py-3 text-sm text-right">{Number.parseFloat(w.occupancy_pct).toFixed(1)}%</td>
                         <td className="py-3 text-sm text-right">₹{w.price_per_ton_day}/ton</td>
                       </tr>
                     ))

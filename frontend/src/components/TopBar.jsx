@@ -125,9 +125,10 @@ const TopBar = () => {
                   <div className="divide-y divide-glass-border overflow-y-auto">
                     {notifications.length > 0 ? (
                       notifications.slice(0, 10).map(n => (
-                        <div 
+                        <button 
+                          type="button"
                           key={n.id}
-                          className={`p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 transition-colors ${!n.is_read ? 'bg-primary/5' : ''}`}
+                          className={`w-full text-left p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 transition-colors block ${!n.is_read ? 'bg-primary/5' : ''}`}
                           onClick={() => {
                             setShowNotifications(false);
                             openNotification(n);
@@ -143,7 +144,7 @@ const TopBar = () => {
                               </span>
                             </div>
                           </div>
-                        </div>
+                        </button>
                       ))
                     ) : (
                       <div className="p-4 text-center text-sm text-gray-500">No notifications</div>

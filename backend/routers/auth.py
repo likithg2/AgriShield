@@ -5,6 +5,8 @@ Register, Login, Profile management
 
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
+from datetime import datetime, timedelta, timezone
+import random
 
 from backend.database import get_db
 from backend.models import User, UserRole
@@ -17,6 +19,7 @@ from backend.schemas import (
 from backend.auth import (
     hash_password, verify_password, create_access_token, get_current_user,
 )
+from backend.communications import send_email_otp, send_sms_otp
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
@@ -34,7 +37,7 @@ def send_register_otp(payload: RegisterOTPRequest, background_tasks: BackgroundT
         )
     
     otp = str(random.randint(100000, 999999))
-    expires = datetime.utcnow() + timedelta(minutes=10)
+    expires = datetime.now(timezone.utc) + timedelta(minutes=10)
     PENDING_REGISTRATION_OTPS[payload.email] = {"otp": otp, "expires": expires}
     
     background_tasks.add_task(send_email_otp, payload.email, otp)
@@ -51,7 +54,7 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or missing OTP.",
         )
-    if datetime.utcnow() > stored_otp["expires"]:
+    if datetime.now(timezone.utc) > stored_otp["expires"]:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="OTP has expired.",
@@ -129,10 +132,6 @@ def login(payload: UserLogin, db: Session = Depends(get_db)):
     )
 
 
-from datetime import datetime, timedelta
-import random
-from backend.communications import send_email_otp, send_sms_otp
-
 def generate_otp():
     return str(random.randint(100000, 999999))
 
@@ -152,7 +151,7 @@ def send_otp(payload: OTPRequest, background_tasks: BackgroundTasks, db: Session
     otp = generate_otp()
     user.otp_code = otp
     # UTC time for expiry (10 minutes)
-    user.otp_expires_at = datetime.utcnow() + timedelta(minutes=10)
+    user.otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
     db.commit()
     
     if "@" in payload.login_id:
@@ -182,11 +181,13 @@ def verify_otp_login(payload: OTPVerifyLogin, db: Session = Depends(get_db)):
             detail="Invalid OTP.",
         )
         
-    if user.otp_expires_at and datetime.utcnow() > user.otp_expires_at.replace(tzinfo=None):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="OTP has expired.",
-        )
+    if user.otp_expires_at:
+        exp = user.otp_expires_at if user.otp_expires_at.tzinfo else user.otp_expires_at.replace(tzinfo=timezone.utc)
+        if datetime.now(timezone.utc) > exp:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="OTP has expired.",
+            )
         
     # Clear OTP
     user.otp_code = None
@@ -215,7 +216,7 @@ def forgot_password(payload: ForgotPasswordRequest, background_tasks: Background
     
     otp = generate_otp()
     user.otp_code = otp
-    user.otp_expires_at = datetime.utcnow() + timedelta(minutes=10)
+    user.otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
     db.commit()
     
     if "@" in payload.login_id:
@@ -245,11 +246,13 @@ def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db))
             detail="Invalid OTP.",
         )
         
-    if user.otp_expires_at and datetime.utcnow() > user.otp_expires_at.replace(tzinfo=None):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="OTP has expired.",
-        )
+    if user.otp_expires_at:
+        exp = user.otp_expires_at if user.otp_expires_at.tzinfo else user.otp_expires_at.replace(tzinfo=timezone.utc)
+        if datetime.now(timezone.utc) > exp:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="OTP has expired.",
+            )
         
     user.password_hash = hash_password(payload.new_password)
     user.otp_code = None
@@ -268,7 +271,7 @@ def request_email_otp(payload: EmailChangeRequest, background_tasks: BackgroundT
             detail="Email already in use.",
         )
     otp = generate_otp()
-    expires = datetime.utcnow() + timedelta(minutes=10)
+    expires = datetime.now(timezone.utc) + timedelta(minutes=10)
     PENDING_EMAIL_CHANGES[current_user.id] = {"new_email": payload.new_email, "otp": otp, "expires": expires}
     
     background_tasks.add_task(send_email_otp, payload.new_email, otp)
@@ -283,7 +286,8 @@ def verify_email_otp(payload: EmailChangeVerify, current_user: User = Depends(ge
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No pending email change for this address.")
     if stored["otp"] != payload.otp:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid OTP.")
-    if datetime.utcnow() > stored["expires"]:
+    if datetime.now(timezone.utc) > stored["expires"]:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="OTP expired.")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="OTP expired.")
         
     current_user.email = payload.new_email

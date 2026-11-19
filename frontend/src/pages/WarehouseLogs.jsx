@@ -49,7 +49,7 @@ const WarehouseLogs = () => {
           setLoading(false);
         }
       };
-      loadData();
+      void loadData();
     }
   }, [user, selectedAdminWarehouseId]);
 
@@ -87,7 +87,7 @@ const WarehouseLogs = () => {
       s.prediction?.district || '-',
       s.destination || '-',
       s.distance_km || '-',
-      s.eta_hours ? parseFloat(s.eta_hours).toFixed(1) : '-',
+      s.eta_hours ? Number.parseFloat(s.eta_hours).toFixed(1) : '-',
       s.prediction?.loss_percentage || '-',
       s.prediction?.financial_loss ? Math.round(s.prediction.financial_loss) : '-',
       s.prediction?.mandi_price_per_kg || '-',
@@ -278,7 +278,7 @@ const WarehouseLogs = () => {
                         <div><span className="text-text-muted">Distance:</span> <span className="font-medium">{selectedLog.distance_km} km</span></div>
                       )}
                       {selectedLog.eta_hours != null && selectedLog.eta_hours !== '' && (
-                        <div><span className="text-text-muted">Est. Arrival:</span> <span className="font-medium">{parseFloat(selectedLog.eta_hours).toFixed(1)} hrs</span></div>
+                        <div><span className="text-text-muted">Est. Arrival:</span> <span className="font-medium">{Number.parseFloat(selectedLog.eta_hours).toFixed(1)} hrs</span></div>
                       )}
                     </div>
                   </div>

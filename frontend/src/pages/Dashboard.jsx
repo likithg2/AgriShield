@@ -72,7 +72,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (user) {
-      fetchData();
+      void fetchData();
     }
   }, [user, selectedAdminWarehouseId]);
 
@@ -145,7 +145,7 @@ const Dashboard = () => {
     }
     
     // Otherwise just update profile
-    executeProfileUpdate();
+    await executeProfileUpdate();
   };
 
   const executeProfileUpdate = async () => {
@@ -166,7 +166,7 @@ const Dashboard = () => {
     try {
       await authAPI.verifyEmailOTP(editForm.email, emailOTP);
       // After successful email verification, update the rest of the profile
-      executeProfileUpdate();
+      await executeProfileUpdate();
       setShowEmailOTP(false);
       setEmailOTP('');
     } catch (err) {
@@ -254,7 +254,7 @@ const Dashboard = () => {
               <span className="text-sm font-medium text-text-muted">Supervising:</span>
               <select
                 value={selectedAdminWarehouseId || ''}
-                onChange={(e) => setAdminWarehouse(parseInt(e.target.value))}
+                onChange={(e) => setAdminWarehouse(Number.parseInt(e.target.value, 10))}
                 className="input-field py-1 px-3 text-sm min-w-[200px] dark:bg-black/90 dark:text-white"
               >
                 {allWarehouses.map(w => (
@@ -281,21 +281,21 @@ const Dashboard = () => {
           {!showEmailOTP ? (
             <form onSubmit={handleProfileUpdate} className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
               <div>
-                <label className="block text-sm font-medium mb-1">Full Name</label>
-                <input type="text" className="input-field" value={editForm.full_name} onChange={e => setEditForm({...editForm, full_name: e.target.value})} required />
+                <label htmlFor="edit-profile-fullname" className="block text-sm font-medium mb-1">Full Name</label>
+                <input id="edit-profile-fullname" type="text" className="input-field" value={editForm.full_name} onChange={e => setEditForm({...editForm, full_name: e.target.value})} required />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Phone</label>
-                <input type="text" className="input-field" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} required />
+                <label htmlFor="edit-profile-phone" className="block text-sm font-medium mb-1">Phone</label>
+                <input id="edit-profile-phone" type="text" className="input-field" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} required />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Email</label>
-                <input type="email" className="input-field" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} required />
+                <label htmlFor="edit-profile-email" className="block text-sm font-medium mb-1">Email</label>
+                <input id="edit-profile-email" type="email" className="input-field" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} required />
               </div>
               {user?.role === 'farmer' && (
                 <div>
-                  <label className="block text-sm font-medium mb-1">District</label>
-                  <select value={editForm.district} onChange={e => setEditForm({...editForm, district: e.target.value})} className="input-field pl-3 bg-primary/10 dark:bg-black/90 dark:text-white" required>
+                  <label htmlFor="edit-profile-district" className="block text-sm font-medium mb-1">District</label>
+                  <select id="edit-profile-district" value={editForm.district} onChange={e => setEditForm({...editForm, district: e.target.value})} className="input-field pl-3 bg-primary/10 dark:bg-black/90 dark:text-white" required>
                     <option value="">Select District</option>
                     {["Bagalkot", "Ballari", "Belagavi", "Bengaluru Rural", "Bengaluru Urban", "Bidar", "Chamarajanagar", "Chikkaballapur", "Chitradurga", "Dakshina Kannada", "Davangere", "Dharwad", "Gadag", "Hassan", "Haveri", "Kalaburagi", "Kodagu", "Kolar", "Koppal", "Mandya", "Mysuru", "Raichur", "Ramanagara", "Shivamogga", "Tumakuru", "Udupi", "Uttara Kannada", "Vijayanagar", "Vijayapura", "Yadgir"].map(d => (
                       <option key={d} value={d}>{d}</option>
@@ -314,7 +314,7 @@ const Dashboard = () => {
                 You are changing your email. An OTP has been sent to <strong>{editForm.email}</strong>.
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium ml-1">6-Digit OTP</label>
+                <label htmlFor="edit-profile-otp" className="text-sm font-medium ml-1">6-Digit OTP</label>
                 <div className="relative">
                   {!emailOTP && (
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-text-muted">
@@ -322,6 +322,7 @@ const Dashboard = () => {
                     </div>
                   )}
                   <input 
+                    id="edit-profile-otp"
                     type={showEmailOtpPassword ? "text" : "password"} 
                     value={emailOTP}
                     onChange={(e) => setEmailOTP(e.target.value)}
@@ -464,7 +465,7 @@ const Dashboard = () => {
                     </div>
                     <div className="flex justify-between text-sm text-text-muted mt-4">
                       <span>To: <span className="font-medium text-text-main">{shipment.destination}</span></span>
-                      <span>ETA: <span className="font-medium text-text-main">{shipment.status === 'Delivered' ? 'N/A' : (shipment.eta_hours ? parseFloat(shipment.eta_hours).toFixed(1) + ' hrs' : '-')}</span></span>
+                      <span>ETA: <span className="font-medium text-text-main">{shipment.status === 'Delivered' ? 'N/A' : (shipment.eta_hours ? Number.parseFloat(shipment.eta_hours).toFixed(1) + ' hrs' : '-')}</span></span>
                       <span className="flex items-center gap-1">
                         Risk: 
                         <span className={`font-medium capitalize ${
@@ -530,9 +531,12 @@ const Dashboard = () => {
               {displayNotifs.filter(n => !n.is_read).length > 0 ? (
                 <div className="divide-y divide-glass-border">
                   {(user?.role === 'farmer' ? displayNotifs.filter(n => !n.is_read).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 10) : displayNotifs.filter(n => !n.is_read).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5)).map(notif => (
-                    <div key={notif.id} 
-                         className="p-4 bg-primary/5 hover:bg-primary/10 cursor-pointer transition-colors"
-                         onClick={() => openNotification(notif)}>
+                    <button 
+                      type="button"
+                      key={notif.id} 
+                      className="w-full text-left p-4 bg-primary/5 hover:bg-primary/10 cursor-pointer transition-colors block"
+                      onClick={() => openNotification(notif)}
+                    >
                       <div className="flex justify-between items-start gap-2 mb-1">
                         <h4 className="font-semibold text-sm flex items-center gap-2">
                           {notif.type === 'dispatch_alert' && <AlertTriangle size={14} className="text-warning" />}
@@ -543,7 +547,7 @@ const Dashboard = () => {
                       <span className="text-xs text-text-muted/50">
                         {new Date(notif.created_at).toLocaleString()}
                       </span>
-                    </div>
+                    </button>
                   ))}
                 </div>
               ) : (
@@ -618,9 +622,12 @@ const Dashboard = () => {
             <div className="overflow-y-auto flex-1 pr-2 space-y-2">
               {displayNotifs.length > 0 ? (
                 displayNotifs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).map(notif => (
-                  <div key={notif.id} 
-                       className={`p-4 hover:bg-white/5 cursor-pointer transition-colors ${!notif.is_read ? 'bg-primary/10' : ''}`}
-                       onClick={() => { setShowNotificationHistory(false); openNotification(notif); }}>
+                  <button 
+                    type="button"
+                    key={notif.id} 
+                    className={`w-full text-left p-4 hover:bg-white/5 cursor-pointer transition-colors block ${!notif.is_read ? 'bg-primary/10' : ''}`}
+                    onClick={() => { setShowNotificationHistory(false); openNotification(notif); }}
+                  >
                     <div className="flex justify-between items-start mb-1">
                       <h4 className="font-bold flex items-center gap-2 text-gray-900 dark:text-white">
                         {notif.type === 'dispatch_alert' && <AlertTriangle size={16} className="text-warning" />}
@@ -631,7 +638,7 @@ const Dashboard = () => {
                       </span>
                     </div>
                     <p className="text-sm text-text-muted line-clamp-2">{notif.message.split('\n')[0]}</p>
-                  </div>
+                  </button>
                 ))
               ) : (
                 <div className="text-center p-8 text-text-muted">
@@ -753,7 +760,7 @@ const Dashboard = () => {
                       <div><span className="text-text-muted">Distance:</span> <span className="font-medium">{selectedActiveShipment.distance_km} km</span></div>
                     )}
                     {selectedActiveShipment.eta_hours != null && selectedActiveShipment.eta_hours !== '' && (
-                      <div><span className="text-text-muted">Est. Arrival:</span> <span className="font-medium">{parseFloat(selectedActiveShipment.eta_hours).toFixed(1)} hrs</span></div>
+                      <div><span className="text-text-muted">Est. Arrival:</span> <span className="font-medium">{Number.parseFloat(selectedActiveShipment.eta_hours).toFixed(1)} hrs</span></div>
                     )}
                   </div>
                 </div>

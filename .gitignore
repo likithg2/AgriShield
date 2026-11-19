@@ -13,3 +13,4 @@ test_chat.py
 *.keras
 assets/uploads/
 node_modules/
+.vscode/

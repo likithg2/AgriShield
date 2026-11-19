@@ -67,8 +67,8 @@ class UserResponse(BaseModel):
     phone: str
     email: str
     role: str
-    district: Optional[str]
-    managed_warehouse_id: Optional[int]
+    district: Optional[str] = None
+    managed_warehouse_id: Optional[int] = None
     created_at: datetime
 
     class Config:
@@ -129,9 +129,9 @@ class PredictionResponse(BaseModel):
     loss_percentage: float
     financial_loss: float
     risk_level: str
-    recommended_facility: Optional[str]
-    facility_distance_km: Optional[float]
-    mandi_price_per_kg: Optional[float]
+    recommended_facility: Optional[str] = None
+    facility_distance_km: Optional[float] = None
+    mandi_price_per_kg: Optional[float] = None
     f_lat: Optional[float] = None
     f_lng: Optional[float] = None
     cs_lat: Optional[float] = None
@@ -188,8 +188,8 @@ class ShipmentResponse(BaseModel):
     risk_status: str
     shelf_days_calculated: float
     status: str
-    farmer_name: Optional[str]
-    farmer_phone: Optional[str]
+    farmer_name: Optional[str] = None
+    farmer_phone: Optional[str] = None
     vehicle_reg_number: Optional[str] = None
     created_at: datetime
     updated_at: datetime
@@ -220,8 +220,8 @@ class WarehouseResponse(BaseModel):
     price_per_ton_day: float
     base_temp_c: float
     operational_status: str
-    contact_phone: Optional[str]
-    manager_id: Optional[int]
+    contact_phone: Optional[str] = None
+    manager_id: Optional[int] = None
 
     class Config:
         from_attributes = True

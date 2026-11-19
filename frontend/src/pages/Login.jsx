@@ -31,12 +31,19 @@ const Login = () => {
   const [warehouses, setWarehouses] = useState([]);
 
   useEffect(() => {
+    const fetchWarehouses = async () => {
+      try {
+        const { warehousesAPI } = await import('../utils/api');
+        const res = await warehousesAPI.list();
+        setWarehouses(res.data);
+      } catch (err) {
+        console.error("Failed to load warehouses", err);
+      }
+    };
     if (view === 'register' && role === 'warehouse_manager' && warehouses.length === 0) {
-      import('../utils/api').then(({ warehousesAPI }) => {
-        warehousesAPI.list().then(res => setWarehouses(res.data)).catch(console.error);
-      });
+      void fetchWarehouses();
     }
-  }, [view, role]);
+  }, [view, role, warehouses.length]);
 
   
   const [loading, setLoading] = useState(false);
@@ -82,7 +89,7 @@ const Login = () => {
         role,
         otp,
         district: role === 'farmer' ? district : null,
-        managed_warehouse_id: role === 'warehouse_manager' ? parseInt(warehouseId) : null,
+        managed_warehouse_id: role === 'warehouse_manager' ? Number.parseInt(warehouseId, 10) : null,
       };
       const res = await authAPI.register(data);
       login(res.data.access_token, res.data.user);
@@ -244,24 +251,24 @@ const Login = () => {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-xs font-medium ml-1">Full Name</label>
-                <input type="text" value={fullName} onChange={e => setFullName(e.target.value)} className="input-field pl-3 bg-primary/10 dark:bg-primary/20" required />
+                <label htmlFor="reg-fullname" className="text-xs font-medium ml-1">Full Name</label>
+                <input id="reg-fullname" type="text" value={fullName} onChange={e => setFullName(e.target.value)} className="input-field pl-3 bg-primary/10 dark:bg-primary/20" required />
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium ml-1">Phone</label>
-                <input type="text" value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} pattern="[0-9]{10}" title="Phone number must be exactly 10 digits" className="input-field pl-3 bg-primary/10 dark:bg-primary/20" required />
+                <label htmlFor="reg-phone" className="text-xs font-medium ml-1">Phone</label>
+                <input id="reg-phone" type="text" value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} pattern="[0-9]{10}" title="Phone number must be exactly 10 digits" className="input-field pl-3 bg-primary/10 dark:bg-primary/20" required />
               </div>
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-medium ml-1">Email</label>
-              <input type="email" value={loginId} autoComplete="off" onChange={e => setLoginId(e.target.value)} className="input-field pl-3 bg-primary/10 dark:bg-primary/20" required />
+              <label htmlFor="reg-email" className="text-xs font-medium ml-1">Email</label>
+              <input id="reg-email" type="email" value={loginId} autoComplete="off" onChange={e => setLoginId(e.target.value)} className="input-field pl-3 bg-primary/10 dark:bg-primary/20" required />
             </div>
             
             <div className="space-y-1">
-              <label className="text-xs font-medium ml-1">Password</label>
+              <label htmlFor="reg-password" className="text-xs font-medium ml-1">Password</label>
               <div className="relative">
-                <input type={showPassword ? "text" : "password"} autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} className="input-field pl-3 pr-10 bg-primary/10 dark:bg-primary/20" required minLength="6" title="Password must be at least 6 characters long" />
+                <input id="reg-password" type={showPassword ? "text" : "password"} autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} className="input-field pl-3 pr-10 bg-primary/10 dark:bg-primary/20" required minLength="6" title="Password must be at least 6 characters long" />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-main" tabIndex="-1">
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -271,8 +278,8 @@ const Login = () => {
 
             {role === 'farmer' && (
               <div className="space-y-1">
-                <label className="text-xs font-medium ml-1">District</label>
-                <select value={district} onChange={e => setDistrict(e.target.value)} className="input-field pl-3 bg-primary/10 dark:bg-black/90 dark:text-white" required>
+                <label htmlFor="reg-district" className="text-xs font-medium ml-1">District</label>
+                <select id="reg-district" value={district} onChange={e => setDistrict(e.target.value)} className="input-field pl-3 bg-primary/10 dark:bg-black/90 dark:text-white" required>
                   <option value="">Select District</option>
                   {["Bagalkot", "Ballari", "Belagavi", "Bengaluru Rural", "Bengaluru Urban", "Bidar", "Chamarajanagar", "Chikkaballapur", "Chitradurga", "Dakshina Kannada", "Davangere", "Dharwad", "Gadag", "Hassan", "Haveri", "Kalaburagi", "Kodagu", "Kolar", "Koppal", "Mandya", "Mysuru", "Raichur", "Ramanagara", "Shivamogga", "Tumakuru", "Udupi", "Uttara Kannada", "Vijayanagar", "Vijayapura", "Yadgir"].map(d => (
                     <option key={d} value={d}>{d}</option>
@@ -283,8 +290,8 @@ const Login = () => {
 
             {role === 'warehouse_manager' && (
               <div className="space-y-1">
-                <label className="text-xs font-medium ml-1">Assigned Warehouse</label>
-                <select value={warehouseId} onChange={e => setWarehouseId(e.target.value)} className="input-field pl-3 bg-primary/10 dark:bg-black/90 dark:text-white" required>
+                <label htmlFor="reg-warehouse" className="text-xs font-medium ml-1">Assigned Warehouse</label>
+                <select id="reg-warehouse" value={warehouseId} onChange={e => setWarehouseId(e.target.value)} className="input-field pl-3 bg-primary/10 dark:bg-black/90 dark:text-white" required>
                   <option value="">Select Warehouse</option>
                   {warehouses.map(w => (
                     <option key={w.id} value={w.id}>{w.facility_name}</option>
@@ -309,9 +316,10 @@ const Login = () => {
         {view === 'register-verify' && (
           <form autoComplete="off" onSubmit={handleRegisterSubmit} className="space-y-6">
             <div className="space-y-2">
-              <label className="text-sm font-medium ml-1">6-Digit OTP</label>
+              <label htmlFor="reg-verify-otp" className="text-sm font-medium ml-1">6-Digit OTP</label>
               <div className="relative">
                 <input 
+                  id="reg-verify-otp"
                   type={showOtp ? "text" : "password"}
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
@@ -345,7 +353,7 @@ const Login = () => {
         {view === 'login' && (
           <form autoComplete="off" onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-2">
-              <label className="text-sm font-medium ml-1">Email or Phone</label>
+              <label htmlFor="login-id" className="text-sm font-medium ml-1">Email or Phone</label>
               <div className="relative">
                 {!loginId && (
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-text-muted">
@@ -353,6 +361,7 @@ const Login = () => {
                   </div>
                 )}
                 <input 
+                  id="login-id"
                   type="text" 
                   value={loginId} autoComplete="off"
                   onChange={(e) => setLoginId(e.target.value)}
@@ -364,7 +373,7 @@ const Login = () => {
             
             <div className="space-y-2">
               <div className="flex justify-between items-center ml-1">
-                <label className="text-sm font-medium">Password</label>
+                <label htmlFor="login-password" className="text-sm font-medium">Password</label>
                 <button type="button" onClick={() => { setView('forgot-password'); clearMessages(); }} className="text-xs text-primary hover:underline">
                   Forgot password?
                 </button>
@@ -376,6 +385,7 @@ const Login = () => {
                   </div>
                 )}
                 <input 
+                  id="login-password"
                   type={showPassword ? "text" : "password"} autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -410,7 +420,7 @@ const Login = () => {
         {view === 'otp-request' && (
           <form autoComplete="off" onSubmit={handleSendOTP} className="space-y-6">
             <div className="space-y-2">
-              <label className="text-sm font-medium ml-1">Email or Phone</label>
+              <label htmlFor="otp-req-id" className="text-sm font-medium ml-1">Email or Phone</label>
               <div className="relative">
                 {!loginId && (
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-text-muted">
@@ -418,6 +428,7 @@ const Login = () => {
                   </div>
                 )}
                 <input 
+                  id="otp-req-id"
                   type="text" 
                   value={loginId} autoComplete="off"
                   onChange={(e) => setLoginId(e.target.value)}
@@ -447,7 +458,7 @@ const Login = () => {
         {view === 'otp-verify' && (
           <form autoComplete="off" onSubmit={handleVerifyOTPLogin} className="space-y-6">
             <div className="space-y-2">
-              <label className="text-sm font-medium ml-1">6-Digit OTP</label>
+              <label htmlFor="otp-verify-code" className="text-sm font-medium ml-1">6-Digit OTP</label>
               <div className="relative">
                 {!otp && (
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-text-muted">
@@ -455,6 +466,7 @@ const Login = () => {
                   </div>
                 )}
                 <input 
+                  id="otp-verify-code"
                   type={showOtp ? "text" : "password"} 
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
@@ -492,7 +504,7 @@ const Login = () => {
         {view === 'forgot-password' && (
           <form autoComplete="off" onSubmit={handleForgotPassword} className="space-y-6">
             <div className="space-y-2">
-              <label className="text-sm font-medium ml-1">Email or Phone</label>
+              <label htmlFor="forgot-pwd-id" className="text-sm font-medium ml-1">Email or Phone</label>
               <div className="relative">
                 {!loginId && (
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-text-muted">
@@ -500,6 +512,7 @@ const Login = () => {
                   </div>
                 )}
                 <input 
+                  id="forgot-pwd-id"
                   type="text" 
                   value={loginId} autoComplete="off"
                   onChange={(e) => setLoginId(e.target.value)}
@@ -529,7 +542,7 @@ const Login = () => {
         {view === 'reset-password' && (
           <form autoComplete="off" onSubmit={handleResetPassword} className="space-y-6">
             <div className="space-y-2">
-              <label className="text-sm font-medium ml-1">Reset Code (OTP)</label>
+              <label htmlFor="reset-pwd-otp" className="text-sm font-medium ml-1">Reset Code (OTP)</label>
               <div className="relative">
                 {!otp && (
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-text-muted">
@@ -537,6 +550,7 @@ const Login = () => {
                   </div>
                 )}
                 <input 
+                  id="reset-pwd-otp"
                   type={showOtp ? "text" : "password"} 
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
@@ -551,7 +565,7 @@ const Login = () => {
             </div>
             
             <div className="space-y-2">
-              <label className="text-sm font-medium ml-1">New Password</label>
+              <label htmlFor="reset-pwd-new" className="text-sm font-medium ml-1">New Password</label>
               <div className="relative">
                 {!newPassword && (
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-text-muted">
@@ -559,6 +573,7 @@ const Login = () => {
                   </div>
                 )}
                 <input 
+                  id="reset-pwd-new"
                   type={showNewPassword ? "text" : "password"} 
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}

@@ -60,7 +60,7 @@ def translate_text(text, target_lang):
         return text
     
     cache = _get_cache()
-    cache_key = f"{target_lang}:{hashlib.md5(text.encode()).hexdigest()}"
+    cache_key = f"{target_lang}:{hashlib.sha256(text.encode('utf-8')).hexdigest()}"
     
     if cache_key in cache:
         return cache[cache_key]

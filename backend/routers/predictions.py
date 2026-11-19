@@ -4,6 +4,10 @@ Run spoilage predictions and view history.
 """
 
 import math
+import asyncio
+import json
+import tempfile
+import os
 from pydantic import BaseModel
 from pathlib import Path
 
@@ -545,60 +549,62 @@ def get_prediction(
     return PredictionResponse.model_validate(prediction)
 
 
+def _write_temp_file(path: str, data: bytes):
+    with open(path, 'wb') as f:
+        f.write(data)
+
+
 @router.post("/analyze-image")
 async def analyze_image(file: UploadFile = File(...)):
+    temp_path = None
     try:
-        import subprocess
-        import json
-        import tempfile
-        import os
-        
-        # Save uploaded file to a temporary file
         contents = await file.read()
         fd, temp_path = tempfile.mkstemp(suffix=".jpg")
+        os.close(fd)
+        
+        await asyncio.to_thread(_write_temp_file, temp_path, contents)
+
+        # Run the predictor using the system Python which has a working TensorFlow
+        system_python = r"C:\Users\thear\AppData\Local\Programs\Python\Python310\python.exe"
+        script_path = os.path.join(BASE_DIR, "utils", "run_predictor.py")
+
+        proc = await asyncio.create_subprocess_exec(
+            system_python, script_path, temp_path,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout_bytes, stderr_bytes = await proc.communicate()
+        stdout_str = stdout_bytes.decode(errors="replace")
+        stderr_str = stderr_bytes.decode(errors="replace")
+
+        if proc.returncode != 0:
+            raise Exception(f"Subprocess failed with code {proc.returncode}: {stderr_str}")
+
         try:
-            with os.fdopen(fd, 'wb') as f:
-                f.write(contents)
-                
-            # Run the predictor using the system Python which has a working TensorFlow
-            system_python = r"C:\Users\thear\AppData\Local\Programs\Python\Python310\python.exe"
-            script_path = os.path.join(BASE_DIR, "utils", "run_predictor.py")
-            
-            result = subprocess.run(
-                [system_python, script_path, temp_path],
-                capture_output=True,
-                text=True,
-                check=False
-            )
-            
-            if result.returncode != 0:
-                raise Exception(f"Subprocess failed with code {result.returncode}: {result.stderr}")
-                
-            try:
-                # Find the last line of stdout that looks like JSON in case TF spits out logs
-                lines = [line.strip() for line in result.stdout.split('\n') if line.strip()]
-                json_str = None
-                for line in reversed(lines):
-                    if line.startswith('{') and line.endswith('}'):
-                        json_str = line
-                        break
-                        
-                if not json_str:
-                    raise Exception(f"No JSON output found in stdout: {result.stdout}")
-                    
-                data = json.loads(json_str)
-                if "error" in data:
-                    raise Exception(data["error"])
-                    
-                return data
-            except json.JSONDecodeError:
-                raise Exception(f"Failed to parse JSON output: {result.stdout}")
-        finally:
-            # Clean up temp file
-            if os.path.exists(temp_path):
-                os.remove(temp_path)
+            # Find the last line of stdout that looks like JSON in case TF spits out logs
+            lines = [line.strip() for line in stdout_str.split('\n') if line.strip()]
+            json_str = None
+            for line in reversed(lines):
+                if line.startswith('{') and line.endswith('}'):
+                    json_str = line
+                    break
+
+            if not json_str:
+                raise Exception(f"No JSON output found in stdout: {stdout_str}")
+
+            data = json.loads(json_str)
+            if "error" in data:
+                raise Exception(data["error"])
+
+            return data
+        except json.JSONDecodeError:
+            raise Exception(f"Failed to parse JSON output: {stdout_str}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Image analysis failed: {str(e)}")
+    finally:
+        # Clean up temp file
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
 
 @router.post("/voice-parse")
 async def parse_voice(file: UploadFile = File(...)):

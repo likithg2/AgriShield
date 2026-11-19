@@ -69,8 +69,10 @@ export const NotificationProvider = ({ children }) => {
     if (user) {
       isFirstLoad.current = true;
       notifiedIds.current.clear();
-      fetchNotifications();
-      const interval = setInterval(fetchNotifications, 10000); // 10s poll
+      void fetchNotifications();
+      const interval = setInterval(() => {
+        void fetchNotifications();
+      }, 10000); // 10s poll
       return () => clearInterval(interval);
     } else {
       setNotifications([]);
@@ -94,7 +96,7 @@ export const NotificationProvider = ({ children }) => {
 
   const openNotification = (notif) => {
     if (!notif.is_read) {
-      markAsRead(notif.id);
+      void markAsRead(notif.id);
     }
     setSelectedNotification(notif);
   };

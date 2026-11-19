@@ -58,7 +58,7 @@ const ChatWidget = () => {
 
   useEffect(() => {
     if (isOpen) {
-      fetchSessions();
+      void fetchSessions();
     }
   }, [isOpen]);
 
@@ -157,7 +157,7 @@ const ChatWidget = () => {
           }
         }
       };
-      audio.play();
+      void audio.play().catch(console.error);
     } catch (err) {
       console.error(err);
       toast.error("Failed to generate audio");
@@ -194,7 +194,7 @@ const ChatWidget = () => {
       
       if (res.data.session_id && !currentSessionId) {
         setCurrentSessionId(res.data.session_id);
-        fetchSessions(); // Refresh history list
+        void fetchSessions(); // Refresh history list
       }
       
       const aiResponseText = res.data.response || res.data.reply || res.data.answer || "I'm sorry, I couldn't understand that.";
@@ -203,7 +203,7 @@ const ChatWidget = () => {
       setMessages(prev => {
         const newMsgs = [...prev, aiMessage];
         if (isVoice) {
-          playTTS(aiResponseText, newMsgs.length - 1);
+          void playTTS(aiResponseText, newMsgs.length - 1);
         }
         return newMsgs;
       });
@@ -226,7 +226,7 @@ const ChatWidget = () => {
 
   useEffect(() => {
     if (wasVoiceInput && inputMessage && !isLoading) {
-      sendMessageText(inputMessage, true);
+      void sendMessageText(inputMessage, true);
       setWasVoiceInput(false);
     }
   }, [wasVoiceInput, inputMessage]);
@@ -385,7 +385,7 @@ const ChatWidget = () => {
                               if (playingAudioIdx === idx && !isAudioFetching) {
                                 stopTTS();
                               } else if (playingAudioIdx === null) {
-                                playTTS(msg.content, idx);
+                                void playTTS(msg.content, idx);
                               }
                             }}
                             disabled={playingAudioIdx !== null && playingAudioIdx !== idx}

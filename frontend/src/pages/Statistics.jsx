@@ -63,7 +63,7 @@ const Statistics = () => {
   };
 
   useEffect(() => {
-    fetchSuggestions();
+    void fetchSuggestions();
   }, []);
 
   useEffect(() => {
@@ -80,7 +80,7 @@ const Statistics = () => {
       }
     };
     if (user) {
-       fetchAnalytics();
+       void fetchAnalytics();
     }
   }, [user, cropFilter, districtFilter]);
 
@@ -110,7 +110,7 @@ const Statistics = () => {
         setPlayingAudioIdx(null);
       };
       
-      audio.play();
+      void audio.play().catch(console.error);
       toast.success("Playing audio", { id: "tts" });
     } catch (err) {
       console.error(err);
@@ -245,15 +245,15 @@ const Statistics = () => {
       {/* Analytics Filters */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8 mb-2">
         <div>
-          <label className="text-sm font-medium text-text-muted mb-1 block flex items-center gap-2">🌱 Filter Analytics by Crop</label>
-          <select value={cropFilter} onChange={(e) => setCropFilter(e.target.value)} className="input-field bg-background/50 dark:bg-black/90 dark:text-white w-full">
+          <label htmlFor="analytics-crop-filter" className="text-sm font-medium text-text-muted mb-1 block flex items-center gap-2">🌱 Filter Analytics by Crop</label>
+          <select id="analytics-crop-filter" value={cropFilter} onChange={(e) => setCropFilter(e.target.value)} className="input-field bg-background/50 dark:bg-black/90 dark:text-white w-full">
             <option value="All">All Crops</option>
             {CROP_LIST.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
         <div>
-          <label className="text-sm font-medium text-text-muted mb-1 block flex items-center gap-2">📍 Filter Analytics by District</label>
-          <select value={districtFilter} onChange={(e) => setDistrictFilter(e.target.value)} className="input-field bg-background/50 dark:bg-black/90 dark:text-white w-full">
+          <label htmlFor="analytics-district-filter" className="text-sm font-medium text-text-muted mb-1 block flex items-center gap-2">📍 Filter Analytics by District</label>
+          <select id="analytics-district-filter" value={districtFilter} onChange={(e) => setDistrictFilter(e.target.value)} className="input-field bg-background/50 dark:bg-black/90 dark:text-white w-full">
             <option value="All">All Districts</option>
             {DISTRICT_LIST.map(d => <option key={d} value={d}>{d}</option>)}
           </select>

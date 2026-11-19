@@ -2,14 +2,21 @@ import React, { createContext, useState } from 'react';
 
 export const LanguageContext = createContext();
 
+const ALLOWED_LANGUAGES = ['EN', 'KN', 'HI'];
+
 export const LanguageProvider = ({ children }) => {
-  const [language, setLanguage] = useState(localStorage.getItem('language') || 'EN');
+  const [language, setLanguage] = useState(() => {
+    const saved = localStorage.getItem('language');
+    return saved && ALLOWED_LANGUAGES.includes(saved.toUpperCase()) ? saved.toUpperCase() : 'EN';
+  });
 
   const changeLanguage = (lang) => {
-    setLanguage(lang);
-    localStorage.setItem('language', lang);
-    document.cookie = `googtrans=/en/${lang.toLowerCase()}; path=/`;
-    document.cookie = `googtrans=/en/${lang.toLowerCase()}; domain=localhost; path=/`;
+    const upper = String(lang || '').toUpperCase();
+    const safeLang = ALLOWED_LANGUAGES.includes(upper) ? upper : 'EN';
+    setLanguage(safeLang);
+    localStorage.setItem('language', safeLang);
+    document.cookie = `googtrans=/en/${safeLang.toLowerCase()}; path=/`;
+    document.cookie = `googtrans=/en/${safeLang.toLowerCase()}; domain=localhost; path=/`;
     window.location.reload();
   };
 

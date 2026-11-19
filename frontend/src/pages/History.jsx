@@ -64,7 +64,7 @@ const History = () => {
       }
     };
     if (user && user.role === 'farmer') {
-       fetchHistory();
+       void fetchHistory();
     }
   }, [user, page, cropFilter, districtFilter]);
 
@@ -104,15 +104,15 @@ const History = () => {
       {/* Filters */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <label className="text-sm font-medium text-text-muted mb-1 block flex items-center gap-2">🌱 Filter by Crop</label>
-          <select value={cropFilter} onChange={(e) => {setCropFilter(e.target.value); setPage(1);}} className="input-field bg-background/50 dark:bg-black/90 dark:text-white w-full">
+          <label htmlFor="history-crop-filter" className="text-sm font-medium text-text-muted mb-1 block flex items-center gap-2">🌱 Filter by Crop</label>
+          <select id="history-crop-filter" value={cropFilter} onChange={(e) => {setCropFilter(e.target.value); setPage(1);}} className="input-field bg-background/50 dark:bg-black/90 dark:text-white w-full">
             <option value="All">All</option>
             {CROP_LIST.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
         <div>
-          <label className="text-sm font-medium text-text-muted mb-1 block flex items-center gap-2">📍 Filter by District</label>
-          <select value={districtFilter} onChange={(e) => {setDistrictFilter(e.target.value); setPage(1);}} className="input-field bg-background/50 dark:bg-black/90 dark:text-white w-full">
+          <label htmlFor="history-district-filter" className="text-sm font-medium text-text-muted mb-1 block flex items-center gap-2">📍 Filter by District</label>
+          <select id="history-district-filter" value={districtFilter} onChange={(e) => {setDistrictFilter(e.target.value); setPage(1);}} className="input-field bg-background/50 dark:bg-black/90 dark:text-white w-full">
             <option value="All">All</option>
             {DISTRICT_LIST.map(d => <option key={d} value={d}>{d}</option>)}
           </select>
@@ -144,7 +144,14 @@ const History = () => {
               
               return (
                 <div key={p.id} 
+                     role="button"
+                     tabIndex={0}
                      className="border border-glass-border rounded-xl p-5 bg-background/50 hover:bg-background/80 transition-colors cursor-pointer hover:border-primary/50"
+                     onKeyDown={(e) => {
+                       if (e.key === 'Enter' || e.key === ' ') {
+                         if (e.target === e.currentTarget) setSelectedPrediction(p);
+                       }
+                     }}
                      onClick={() => setSelectedPrediction(p)}>
                   <div className="flex justify-between items-start mb-4">
                     <div>
