@@ -48,7 +48,11 @@ export const predictionsAPI = {
   create: (data) => api.post('/predictions/', data),
   list: (params) => api.get('/predictions/', { params }),
   getAnalytics: (params) => api.get('/predictions/analytics', { params }),
-  getAdvisoryAudio: (data) => api.post('/predictions/advisory-audio', data, { responseType: 'blob' })
+  getAdvisoryAudio: (data) => api.post('/predictions/advisory-audio', data, { responseType: 'blob' }),
+  getWeather: (district) => api.get('/predictions/weather', { params: { district } }),
+  analyzeImage: (formData) => api.post('/predictions/analyze-image', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
 };
 
 export const shipmentsAPI = {

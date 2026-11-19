@@ -9,7 +9,7 @@ import GlassCard from '../components/GlassCard';
 import { AuthContext } from '../context/AuthContext';
 import { LanguageContext } from '../context/LanguageContext';
 import { ThemeContext } from '../context/ThemeContext';
-import { predictionsAPI } from '../utils/api';
+import { predictionsAPI, shipmentsAPI } from '../utils/api';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import ImageModal from '../components/ImageModal';
@@ -150,17 +150,27 @@ const Prediction = () => {
   };
 
   useEffect(() => {
-    if (formData.district) {
-      fetch(`http://localhost:8000/api/predictions/weather?district=${encodeURIComponent(formData.district)}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.temp && data.humidity) {
-             setFormData(prev => ({ ...prev, temperature: data.temp, humidity: data.humidity }));
-             setWeatherData(data);
-          }
-        })
-        .catch(err => console.error("Weather fetch failed:", err));
+    if (!formData.district || !DISTRICT_LIST.includes(formData.district)) {
+      return;
     }
+    const safeDistrict = DISTRICT_LIST.find(d => d === formData.district);
+    if (!safeDistrict) return;
+
+    let isMounted = true;
+    predictionsAPI.getWeather(safeDistrict)
+      .then(res => {
+        if (!isMounted) return;
+        const data = res.data;
+        if (data && data.temp && data.humidity) {
+           setFormData(prev => ({ ...prev, temperature: data.temp, humidity: data.humidity }));
+           setWeatherData(data);
+        }
+      })
+      .catch(err => console.error("Weather fetch failed:", err));
+
+    return () => {
+      isMounted = false;
+    };
   }, [formData.district]);
 
   // Image Upload Logic
@@ -176,26 +186,15 @@ const Prediction = () => {
     formDataObj.append('file', file);
     
     try {
-      const token = localStorage.getItem('auth_token');
-        const res = await fetch('http://localhost:8000/api/predictions/analyze-image', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` },
-          body: formDataObj
-        });
-        
-        const data = await res.json();
-        
-        if (!res.ok) {
-          throw new Error(data.detail || "Image analysis failed.");
-        }
-        
-        setImageAnalysis(data);
+      const res = await predictionsAPI.analyzeImage(formDataObj);
+      const data = res.data;
+      setImageAnalysis(data);
       if (CROP_LIST.includes(data.crop_name)) {
         setFormData(prev => ({ ...prev, crop: data.crop_name }));
       }
     } catch (err) {
       console.error(err);
-      toast.error(err.message || "Failed to analyze image");
+      toast.error(err.response?.data?.detail || err.message || "Failed to analyze image");
     } finally {
       setAnalyzingImage(false);
     }
@@ -279,16 +278,9 @@ const Prediction = () => {
   const fetchAdvisoryAudio = async (text, lang) => {
     setFetchingAudio(true);
     try {
-      const authToken = localStorage.getItem('auth_token');
-      const audioRes = await fetch('http://localhost:8000/api/predictions/advisory-audio', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
-        body: JSON.stringify({ text, lang })
-      });
-      if (audioRes.ok) {
-        const audioBlob = await audioRes.blob();
-        setAdvisoryAudioUrl(URL.createObjectURL(audioBlob));
-      }
+      const res = await predictionsAPI.getAdvisoryAudio({ text, lang });
+      const audioBlob = res.data;
+      setAdvisoryAudioUrl(URL.createObjectURL(audioBlob));
     } catch (err) {
       console.error(err);
     } finally {
@@ -928,30 +920,18 @@ const Prediction = () => {
                                               }
                                               try {
                                                   setIsBooking(true);
-                                                  const res = await fetch("http://localhost:8000/api/shipments/", {
-                                                      method: "POST",
-                                                      headers: {
-                                                          "Content-Type": "application/json",
-                                                          "Authorization": `Bearer ${token}`
-                                                      },
-                                                      body: JSON.stringify({
-                                                          prediction_id: predictionResult.id,
-                                                          booking_id: `BK-${Date.now().toString().slice(-6)}`,
-                                                          crop: predictionResult.crop,
-                                                          tonnage: predictionResult.quantity_tons,
-                                                          destination: fac.facility_name,
-                                                          route_quality: predictionResult.road_condition,
-                                                          eta_hours: (fac.physical_distance_km / 40).toFixed(1) + " hours",
-                                                          risk_status: predictionResult.risk_level,
-                                                          shelf_days_calculated: predictionResult.shelf_life_days,
-                                                          vehicle_reg_number: bookingTarget
-                                                      })
+                                                  await shipmentsAPI.create({
+                                                      prediction_id: predictionResult.id,
+                                                      booking_id: `BK-${Date.now().toString().slice(-6)}`,
+                                                      crop: predictionResult.crop,
+                                                      tonnage: predictionResult.quantity_tons,
+                                                      destination: fac.facility_name,
+                                                      route_quality: predictionResult.road_condition,
+                                                      eta_hours: (fac.physical_distance_km / 40).toFixed(1) + " hours",
+                                                      risk_status: predictionResult.risk_level,
+                                                      shelf_days_calculated: predictionResult.shelf_life_days,
+                                                      vehicle_reg_number: bookingTarget
                                                   });
-      
-                                                  if (!res.ok) {
-                                                      const err = await res.json();
-                                                      throw new Error(err.detail || "Booking failed");
-                                                  }
       
                                                   toast.success(`Slot successfully booked! Assigned Vehicle: ${bookingTarget}`);
                                                   setBookingDetails({
