@@ -17,7 +17,7 @@ const getCropEmoji = (crop) => {
 
 const Dashboard = () => {
   const { user, login, logout, selectedAdminWarehouseId, setAdminWarehouse } = useContext(AuthContext); // we can use login() to update user state if needed, or just reload
-  const { notifications: globalNotifs, openNotification } = useContext(NotificationContext) || { notifications: [] };
+  const { notifications: globalNotifs, openNotification, setShowNotificationHistory } = useContext(NotificationContext) || { notifications: [] };
   
   const [dashboardData, setDashboardData] = useState(null);
   const [managerData, setManagerData] = useState(null);
@@ -35,7 +35,6 @@ const Dashboard = () => {
   });
   const [updateMsg, setUpdateMsg] = useState({ type: '', text: '' });
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showNotificationHistory, setShowNotificationHistory] = useState(false);
   const [selectedActiveShipment, setSelectedActiveShipment] = useState(null);
 
   // Admin User Management State
@@ -656,47 +655,6 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {showNotificationHistory && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl max-w-2xl w-full shadow-2xl space-y-4 border border-glass-border flex flex-col max-h-[80vh]">
-            <div className="flex justify-between items-center pb-4 border-b border-glass-border shrink-0">
-              <h3 className="text-xl font-bold flex items-center gap-2 text-gray-900 dark:text-white">
-                <History className="text-primary" /> Notification History
-              </h3>
-              <button onClick={() => setShowNotificationHistory(false)} className="text-text-muted hover:text-danger">
-                <X size={24} />
-              </button>
-            </div>
-            <div className="overflow-y-auto flex-1 pr-2 space-y-2">
-              {displayNotifs.length > 0 ? (
-                displayNotifs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).map(notif => (
-                  <button 
-                    type="button"
-                    key={notif.id} 
-                    className={`w-full text-left p-4 hover:bg-white/5 cursor-pointer transition-colors block ${!notif.is_read ? 'bg-primary/10' : ''}`}
-                    onClick={() => { setShowNotificationHistory(false); openNotification(notif); }}
-                  >
-                    <div className="flex justify-between items-start mb-1">
-                      <h4 className="font-bold flex items-center gap-2 text-gray-900 dark:text-white">
-                        {notif.type === 'dispatch_alert' && <AlertTriangle size={16} className="text-warning" />}
-                        {notif.title}
-                      </h4>
-                      <span className="text-xs text-text-muted">
-                        {new Date(notif.created_at).toLocaleString()}
-                      </span>
-                    </div>
-                    <p className="text-sm text-text-muted line-clamp-2">{notif.message.split('\n')[0]}</p>
-                  </button>
-                ))
-              ) : (
-                <div className="text-center p-8 text-text-muted">
-                  No read notifications history found.
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       <AnimatePresence>
         {showDeleteModal && (
