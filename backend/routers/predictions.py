@@ -790,12 +790,12 @@ def parse_voice_command_text(text: str) -> dict:
                 break
 
     extracted_temp = None
-    m_temp = re.search(r'(?:temp(?:erature)?)\s*(?:is|of|at)?\s*(\d+(?:\.\d+)?)', clean)
+    m_temp = re.search(r'\btemp(?:erature)?(?:\s+(?:is|of|at))?\s*(\d+(?:\.\d+)?)', clean)
     if m_temp:
         extracted_temp = float(m_temp.group(1))
 
     extracted_hum = None
-    m_hum = re.search(r'(?:humidity)\s*(?:is|of|at)?\s*(\d+(?:\.\d+)?)', clean)
+    m_hum = re.search(r'\bhumidity(?:\s+(?:is|of|at))?\s*(\d+(?:\.\d+)?)', clean)
     if m_hum:
         extracted_hum = float(m_hum.group(1))
 

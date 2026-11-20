@@ -147,7 +147,7 @@ const parseVoiceCommand = (transcript) => {
   const numRegex = /\b(\d+(?:\.\d+)?)\s*(?:tons?|tonnes?|t\b|quintals?|kg)?/i;
   const numMatch = clean.match(numRegex);
   if (numMatch) {
-    foundQty = parseFloat(numMatch[1]);
+    foundQty = Number.parseFloat(numMatch[1]);
   } else {
     for (const [w, val] of Object.entries(VOICE_NUMBER_WORDS)) {
       const wRegex = new RegExp(`\\b${w}\\s*(?:tons?|tonnes?|t\b)?`, 'i');
@@ -159,12 +159,12 @@ const parseVoiceCommand = (transcript) => {
   }
 
   let foundTemp = null;
-  const tempMatch = clean.match(/(?:temp(?:erature)?)\s*(?:is|of|at)?\s*(\d+(?:\.\d+)?)/i);
-  if (tempMatch) foundTemp = parseFloat(tempMatch[1]);
+  const tempMatch = clean.match(/\btemp(?:erature)?(?:\s+(?:is|of|at))?\s*(\d+(?:\.\d+)?)/i);
+  if (tempMatch) foundTemp = Number.parseFloat(tempMatch[1]);
 
   let foundHumidity = null;
-  const humMatch = clean.match(/(?:humidity)\s*(?:is|of|at)?\s*(\d+(?:\.\d+)?)/i);
-  if (humMatch) foundHumidity = parseFloat(humMatch[1]);
+  const humMatch = clean.match(/\bhumidity(?:\s+(?:is|of|at))?\s*(\d+(?:\.\d+)?)/i);
+  if (humMatch) foundHumidity = Number.parseFloat(humMatch[1]);
 
   return { foundCrop, foundDistrict, foundQty, foundTemp, foundHumidity };
 };

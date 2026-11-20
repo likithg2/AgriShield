@@ -1,12 +1,22 @@
 import axios from 'axios';
 
+// Helper to clean base URL without regex backtracking
+const cleanBaseUrl = (url) => {
+  if (!url) return '';
+  let trimmed = url.trim();
+  while (trimmed.endsWith('/')) {
+    trimmed = trimmed.slice(0, -1);
+  }
+  return trimmed;
+};
+
 // Resolve API base URL:
 // 1. Environment variable if set (trimmed of trailing slashes).
 // 2. Production fallback points to the Render backend (never silently to localhost).
 // 3. Development fallback points to local server (http://localhost:8000/api).
 const rawEnvUrl = import.meta.env.VITE_API_BASE_URL;
 const API_BASE_URL = rawEnvUrl
-  ? rawEnvUrl.replace(/\/+$/, '')
+  ? cleanBaseUrl(rawEnvUrl)
   : import.meta.env.PROD
   ? 'https://agrishield-api.onrender.com/api'
   : 'http://localhost:8000/api';

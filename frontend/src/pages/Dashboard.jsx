@@ -859,7 +859,6 @@ const Dashboard = () => {
                                   onChange={(e) => setAdminNewPassword(e.target.value)}
                                   className="input-field py-1 px-2.5 text-xs w-44"
                                   required
-                                  autoFocus
                                 />
                                 <Button type="submit" className="!py-1 !px-2.5 !text-xs" disabled={adminResetSubmitting}>
                                   {adminResetSubmitting ? 'Saving...' : 'Save'}
