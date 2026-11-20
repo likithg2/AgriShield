@@ -112,6 +112,9 @@ export const predictionsAPI = {
   analyzeImage: (formData) => api.post('/predictions/analyze-image', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
+  parseVoice: (formData) => api.post('/predictions/voice-parse', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
 };
 
 export const shipmentsAPI = {

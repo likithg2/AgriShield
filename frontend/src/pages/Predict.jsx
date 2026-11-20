@@ -39,6 +39,136 @@ const DISTRICT_LIST = [
   "Tumakuru", "Udupi", "Uttara Kannada", "Vijayanagar", "Vijayapura", "Yadgir"
 ];
 
+const VOICE_DISTRICT_ALIASES = {
+  "bangalore urban": "Bengaluru Urban", "bengaluru urban": "Bengaluru Urban",
+  "bangalore rural": "Bengaluru Rural", "bengaluru rural": "Bengaluru Rural",
+  "bangalore": "Bengaluru Urban", "bengaluru": "Bengaluru Urban",
+  "mysore": "Mysuru", "mysuru": "Mysuru", "bellary": "Ballari", "ballari": "Ballari",
+  "belgaum": "Belagavi", "belagavi": "Belagavi", "bijapur": "Vijayapura", "vijayapura": "Vijayapura",
+  "vijayapur": "Vijayapura", "gulbarga": "Kalaburagi", "kalaburagi": "Kalaburagi",
+  "shimoga": "Shivamogga", "shivamogga": "Shivamogga", "mangalore": "Dakshina Kannada",
+  "mangaluru": "Dakshina Kannada", "dakshina kannada": "Dakshina Kannada",
+  "south canara": "Dakshina Kannada", "karwar": "Uttara Kannada", "uttara kannada": "Uttara Kannada",
+  "north canara": "Uttara Kannada", "hubli": "Dharwad", "hubballi": "Dharwad",
+  "dharwad": "Dharwad", "chikkaballapur": "Chikkaballapur", "chikkaballapura": "Chikkaballapur",
+  "chamarajanagar": "Chamarajanagar", "chamarajanagara": "Chamarajanagar",
+  "tumkur": "Tumakuru", "tumakuru": "Tumakuru", "madikeri": "Kodagu", "coorg": "Kodagu", "kodagu": "Kodagu",
+  "bagalkot": "Bagalkot", "bidar": "Bidar", "chitradurga": "Chitradurga", "davangere": "Davangere",
+  "gadag": "Gadag", "hassan": "Hassan", "haveri": "Haveri", "kolar": "Kolar", "koppal": "Koppal",
+  "mandya": "Mandya", "raichur": "Raichur", "ramanagara": "Ramanagara", "ramanagar": "Ramanagara",
+  "udupi": "Udupi", "vijayanagar": "Vijayanagar", "vijayanagara": "Vijayanagar", "yadgir": "Yadgir"
+};
+
+const VOICE_CROP_SYNONYMS = {
+  tomato: "Tomato", tomatoes: "Tomato", tamatar: "Tomato", thakkali: "Tomato",
+  potato: "Potato", potatoes: "Potato", aloo: "Potato", alu: "Potato", alugadde: "Potato",
+  onion: "Onion", onions: "Onion", pyaz: "Onion", pyaaz: "Onion", kanda: "Onion", eerulli: "Onion",
+  cucumber: "Cucumber", cucumbers: "Cucumber", kheera: "Cucumber", southekai: "Cucumber"
+};
+
+const VOICE_NUMBER_WORDS = {
+  zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
+  eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17,
+  eighteen: 18, nineteen: 19, twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70,
+  eighty: 80, ninety: 90, hundred: 100
+};
+
+const encodeWAV = (samples, sampleRate = 16000) => {
+  const buffer = new ArrayBuffer(44 + samples.length * 2);
+  const view = new DataView(buffer);
+  const writeString = (v, offset, str) => {
+    for (let i = 0; i < str.length; i++) v.setUint8(offset + i, str.charCodeAt(i));
+  };
+  writeString(view, 0, 'RIFF');
+  view.setUint32(4, 36 + samples.length * 2, true);
+  writeString(view, 8, 'WAVE');
+  writeString(view, 12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true); // PCM format
+  view.setUint16(22, 1, true); // Mono channel
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeString(view, 36, 'data');
+  view.setUint32(40, samples.length * 2, true);
+  let offset = 44;
+  for (let i = 0; i < samples.length; i++, offset += 2) {
+    const s = Math.max(-1, Math.min(1, samples[i]));
+    view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+  }
+  return new Blob([buffer], { type: 'audio/wav' });
+};
+
+const parseVoiceCommand = (transcript) => {
+  const clean = transcript
+    .toLowerCase()
+    .replace(/[,:;!?]/g, ' ')
+    .replace(/\.(?!\d)/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  let foundCrop = null;
+  for (const [syn, standard] of Object.entries(VOICE_CROP_SYNONYMS)) {
+    const regex = new RegExp(`\\b${syn}\\b`, 'i');
+    if (regex.test(clean)) {
+      foundCrop = standard;
+      break;
+    }
+  }
+  if (!foundCrop) {
+    for (const c of CROP_LIST) {
+      if (clean.includes(c.toLowerCase())) {
+        foundCrop = c;
+        break;
+      }
+    }
+  }
+
+  let foundDistrict = null;
+  const aliasKeys = Object.keys(VOICE_DISTRICT_ALIASES).sort((a, b) => b.length - a.length);
+  for (const key of aliasKeys) {
+    const regex = new RegExp(`\\b${key}\\b`, 'i');
+    if (regex.test(clean)) {
+      foundDistrict = VOICE_DISTRICT_ALIASES[key];
+      break;
+    }
+  }
+  if (!foundDistrict) {
+    for (const d of DISTRICT_LIST) {
+      if (clean.includes(d.toLowerCase())) {
+        foundDistrict = d;
+        break;
+      }
+    }
+  }
+
+  let foundQty = null;
+  const numRegex = /\b(\d+(?:\.\d+)?)\s*(?:tons?|tonnes?|t\b|quintals?|kg)?/i;
+  const numMatch = clean.match(numRegex);
+  if (numMatch) {
+    foundQty = parseFloat(numMatch[1]);
+  } else {
+    for (const [w, val] of Object.entries(VOICE_NUMBER_WORDS)) {
+      const wRegex = new RegExp(`\\b${w}\\s*(?:tons?|tonnes?|t\b)?`, 'i');
+      if (wRegex.test(clean)) {
+        foundQty = val;
+        break;
+      }
+    }
+  }
+
+  let foundTemp = null;
+  const tempMatch = clean.match(/(?:temp(?:erature)?)\s*(?:is|of|at)?\s*(\d+(?:\.\d+)?)/i);
+  if (tempMatch) foundTemp = parseFloat(tempMatch[1]);
+
+  let foundHumidity = null;
+  const humMatch = clean.match(/(?:humidity)\s*(?:is|of|at)?\s*(\d+(?:\.\d+)?)/i);
+  if (humMatch) foundHumidity = parseFloat(humMatch[1]);
+
+  return { foundCrop, foundDistrict, foundQty, foundTemp, foundHumidity };
+};
+
 /**
  * Resizes an image file to max maxWidth x maxHeight while preserving aspect ratio,
  * and encodes it as JPEG at given quality (~0.7).
@@ -135,7 +265,13 @@ const Prediction = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const [voiceText, setVoiceText] = useState('');
+  const [voiceParsedDetails, setVoiceParsedDetails] = useState(null);
   const [processingVoice, setProcessingVoice] = useState(false);
+
+  const audioContextRef = useRef(null);
+  const audioProcessorRef = useRef(null);
+  const audioStreamRef = useRef(null);
+  const audioSamplesRef = useRef([]);
   
   const [weatherData, setWeatherData] = useState(null);
 
@@ -255,75 +391,187 @@ const Prediction = () => {
     }
   };
 
-  // Voice Recording Logic
-  const startRecording = () => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      toast.error("Speech recognition is not supported in this browser.");
-      return;
+  // Voice Recording & Parsing Logic
+  const applyVoiceData = (parsed, transcript) => {
+    setVoiceText(transcript);
+    setVoiceParsedDetails(parsed);
+    setFormData(prev => ({
+      ...prev,
+      ...(parsed.foundCrop && { crop: parsed.foundCrop }),
+      ...(parsed.foundDistrict && { district: parsed.foundDistrict }),
+      ...(parsed.foundQty && { quantity_tons: parsed.foundQty }),
+      ...(parsed.foundTemp != null && { temperature: parsed.foundTemp }),
+      ...(parsed.foundHumidity != null && { humidity: parsed.foundHumidity })
+    }));
+
+    const extractedItems = [
+      parsed.foundCrop && `Crop: ${parsed.foundCrop}`,
+      parsed.foundDistrict && `District: ${parsed.foundDistrict}`,
+      parsed.foundQty && `Qty: ${parsed.foundQty}T`,
+      parsed.foundTemp != null && `Temp: ${parsed.foundTemp}°C`,
+      parsed.foundHumidity != null && `Humidity: ${parsed.foundHumidity}%`
+    ].filter(Boolean);
+
+    if (extractedItems.length > 0) {
+      toast.success(`Voice Recognized: ${extractedItems.join(' • ')}`);
+    } else {
+      toast.info(`Transcribed: "${transcript}". Please mention crop, district, or quantity (e.g. "Tomato in Kolar, 10 tons").`);
     }
-    
-    const recognition = new SpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.lang = 'en-US';
-    
-    recognition.onstart = () => {
+  };
+
+  const startAudioStreamFallback = async () => {
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        toast.error("Audio recording is not supported in this browser.");
+        return;
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioStreamRef.current = stream;
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      const audioCtx = new AudioCtx({ sampleRate: 16000 });
+      audioContextRef.current = audioCtx;
+      const source = audioCtx.createMediaStreamSource(stream);
+      const processor = audioCtx.createScriptProcessor(4096, 1, 1);
+      audioProcessorRef.current = processor;
+      audioSamplesRef.current = [];
+
+      processor.onaudioprocess = (e) => {
+        const inputData = e.inputBuffer.getChannelData(0);
+        audioSamplesRef.current.push(new Float32Array(inputData));
+      };
+
+      source.connect(processor);
+      processor.connect(audioCtx.destination);
       setIsRecording(true);
-    };
-    
-    recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript;
-      setVoiceText(transcript);
-      
-      const ttLower = transcript.toLowerCase().replace("bangalore", "bengaluru");
-      
-      let foundCrop = null;
-      for (const c of CROP_LIST) {
-        if (ttLower.includes(c.toLowerCase())) {
-          foundCrop = c;
-          break;
-        }
-      }
-      if (foundCrop) setFormData(prev => ({ ...prev, crop: foundCrop }));
-      
-      let foundDistrict = null;
-      for (const d of DISTRICT_LIST) {
-        if (ttLower.includes(d.toLowerCase()) || ttLower.split(' ').includes(d.toLowerCase().split(' ')[0])) {
-          foundDistrict = d;
-          break;
-        }
-      }
-      if (foundDistrict) setFormData(prev => ({ ...prev, district: foundDistrict }));
-      
-      const words = transcript.split(' ');
-      let foundQty = null;
-      for (const w of words) {
-        const num = Number.parseFloat(w);
-        if (!Number.isNaN(num) && num > 0) {
-          foundQty = num;
-          break;
-        }
-      }
-      if (foundQty) setFormData(prev => ({ ...prev, quantity_tons: foundQty }));
-    };
-    
-    recognition.onerror = (event) => {
-      console.error("Speech recognition error", event.error);
+      setMediaRecorder({ type: 'stream' });
+    } catch (err) {
+      console.error("Audio recording fallback error:", err);
+      toast.error("Microphone access error: " + (err.message || "Permission denied"));
+    }
+  };
+
+  const stopAudioStreamFallback = async () => {
+    try {
       setIsRecording(false);
-    };
-    
-    recognition.onend = () => {
-      setIsRecording(false);
-    };
-    
-    recognition.start();
-    setMediaRecorder(recognition);
+      setProcessingVoice(true);
+      if (audioProcessorRef.current) {
+        audioProcessorRef.current.disconnect();
+        audioProcessorRef.current = null;
+      }
+      if (audioContextRef.current) {
+        await audioContextRef.current.close().catch(() => {});
+        audioContextRef.current = null;
+      }
+      if (audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach(t => t.stop());
+        audioStreamRef.current = null;
+      }
+
+      const totalLength = audioSamplesRef.current.reduce((acc, chunk) => acc + chunk.length, 0);
+      if (totalLength === 0) {
+        setProcessingVoice(false);
+        toast.info("No audio recorded. Please try speaking again.");
+        return;
+      }
+      const merged = new Float32Array(totalLength);
+      let offset = 0;
+      for (const chunk of audioSamplesRef.current) {
+        merged.set(chunk, offset);
+        offset += chunk.length;
+      }
+      audioSamplesRef.current = [];
+
+      const wavBlob = encodeWAV(merged, 16000);
+      const fd = new FormData();
+      fd.append("file", wavBlob, "voice_command.wav");
+      const reqLang = language === 'kn' ? 'kn-IN' : language === 'hi' ? 'hi-IN' : 'en-IN';
+      fd.append("lang", reqLang);
+
+      const res = await predictionsAPI.parseVoice(fd);
+      const data = res.data;
+      if (data && data.text) {
+        applyVoiceData({
+          foundCrop: data.crop,
+          foundDistrict: data.district,
+          foundQty: data.quantity,
+          foundTemp: data.temperature,
+          foundHumidity: data.humidity
+        }, data.text);
+      }
+    } catch (err) {
+      console.error("Backend voice parse failed:", err);
+      toast.error(err.response?.data?.detail || "Failed to process voice audio.");
+    } finally {
+      setProcessingVoice(false);
+    }
+  };
+
+  const startRecording = async () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      try {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        const reqLang = language === 'kn' ? 'kn-IN' : language === 'hi' ? 'hi-IN' : 'en-IN';
+        recognition.lang = reqLang;
+
+        recognition.onstart = () => {
+          setIsRecording(true);
+          setProcessingVoice(false);
+        };
+
+        recognition.onresult = (event) => {
+          setProcessingVoice(true);
+          const transcript = event.results[0][0].transcript;
+          const parsed = parseVoiceCommand(transcript);
+          applyVoiceData(parsed, transcript);
+          setProcessingVoice(false);
+        };
+
+        recognition.onerror = (event) => {
+          console.error("Speech recognition error", event.error);
+          setIsRecording(false);
+          setProcessingVoice(false);
+          if (event.error === 'not-allowed') {
+            toast.error("Microphone access denied. Please allow microphone permissions in your browser.");
+          } else if (event.error === 'no-speech') {
+            toast.error("No speech detected. Please speak closer to your mic and try again.");
+          } else if (event.error === 'network') {
+            toast.error("Speech network error. Falling back to audio recording...");
+            void startAudioStreamFallback();
+          } else if (event.error === 'audio-capture') {
+            toast.error("No microphone detected on your system.");
+          } else {
+            toast.error(`Voice error: ${event.error}`);
+          }
+        };
+
+        recognition.onend = () => {
+          setIsRecording(false);
+        };
+
+        recognition.start();
+        setMediaRecorder(recognition);
+        return;
+      } catch (err) {
+        console.warn("SpeechRecognition init failed, falling back to AudioStream", err);
+      }
+    }
+
+    // Fallback for browsers without SpeechRecognition
+    await startAudioStreamFallback();
   };
   
   const stopRecording = () => {
-    if (mediaRecorder && mediaRecorder.stop) {
-      mediaRecorder.stop();
+    if (mediaRecorder) {
+      if (mediaRecorder.type === 'stream') {
+        void stopAudioStreamFallback();
+      } else if (mediaRecorder.stop) {
+        mediaRecorder.stop();
+        setIsRecording(false);
+      }
+    } else {
       setIsRecording(false);
     }
   };
@@ -604,14 +852,22 @@ const Prediction = () => {
           </GlassCard>
 
           {/* Voice Input */}
-          <GlassCard className="p-6 bg-gradient-to-br from-primary/5 to-transparent">
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-              <Mic className={isRecording ? "text-red-500 animate-pulse" : "text-primary"} /> 
-              {t("AI Voice Command Gateway")}
-            </h2>
+          <GlassCard className="p-6 bg-gradient-to-br from-primary/5 to-transparent border border-primary/20">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <Mic className={isRecording ? "text-red-500 animate-pulse" : "text-primary"} /> 
+                {t("AI Voice Command Gateway")}
+              </h2>
+              {isRecording && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-500/20 text-red-500 border border-red-500/30 animate-pulse">
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+                  Listening... speak now
+                </span>
+              )}
+            </div>
             <p className="text-sm text-text-muted mb-4">{t("Tap mic and clearly state criteria (e.g., 'Tomato in Kolar, 10 Tons')")}</p>
             
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-3">
               {!isRecording ? (
                 <Button onClick={startRecording} className="bg-red-500 hover:bg-red-600 shadow-red-500/30 text-white rounded-full px-6 flex items-center gap-2">
                   <span className="w-2 h-2 bg-white rounded-full"></span> Tap to Speak
@@ -621,12 +877,56 @@ const Prediction = () => {
                   <span className="w-3 h-3 bg-red-500 rounded-sm"></span> Stop Recording
                 </Button>
               )}
-              {processingVoice && <span className="text-primary text-sm animate-pulse">Transcribing...</span>}
+              {processingVoice && (
+                <span className="text-primary text-sm flex items-center gap-2 animate-pulse">
+                  <Loader className="animate-spin" size={16}/> Transcribing & parsing parameters...
+                </span>
+              )}
+              {voiceText && (
+                <button
+                  type="button"
+                  onClick={() => { setVoiceText(''); setVoiceParsedDetails(null); }}
+                  className="text-xs text-text-muted hover:text-danger underline ml-auto cursor-pointer"
+                >
+                  Clear
+                </button>
+              )}
             </div>
             
             {voiceText && (
-              <div className="mt-4 p-3 bg-black/20 rounded-lg border border-white/10 text-sm">
-                🗣️ <strong>AI Transcribed:</strong> "{voiceText}"
+              <div className="mt-4 p-4 bg-black/20 rounded-xl border border-white/10 space-y-2">
+                <div className="text-sm">
+                  🗣️ <strong>AI Transcribed:</strong> <span className="italic font-medium text-text-main">"{voiceText}"</span>
+                </div>
+                {voiceParsedDetails && (
+                  <div className="flex flex-wrap gap-2 pt-2 border-t border-white/5">
+                    {voiceParsedDetails.foundCrop && (
+                      <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-green-500/20 text-green-700 dark:text-green-300 border border-green-500/30">
+                        🌱 Crop: {voiceParsedDetails.foundCrop}
+                      </span>
+                    )}
+                    {voiceParsedDetails.foundDistrict && (
+                      <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/30">
+                        📍 District: {voiceParsedDetails.foundDistrict}
+                      </span>
+                    )}
+                    {voiceParsedDetails.foundQty && (
+                      <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-orange-500/20 text-orange-700 dark:text-orange-300 border border-orange-500/30">
+                        ⚖️ Qty: {voiceParsedDetails.foundQty} Tons
+                      </span>
+                    )}
+                    {voiceParsedDetails.foundTemp != null && (
+                      <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-red-500/20 text-red-700 dark:text-red-300 border border-red-500/30">
+                        🌡️ Temp: {voiceParsedDetails.foundTemp}°C
+                      </span>
+                    )}
+                    {voiceParsedDetails.foundHumidity != null && (
+                      <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30">
+                        💧 Humidity: {voiceParsedDetails.foundHumidity}%
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </GlassCard>

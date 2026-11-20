@@ -12,6 +12,7 @@ import sys
 import logging
 import subprocess
 from pydantic import BaseModel
+from typing import Optional
 from pathlib import Path
 
 import numpy as np
@@ -716,8 +717,98 @@ async def analyze_image(file: UploadFile = File(...)):
             except OSError:
                 pass
 
+VOICE_DISTRICT_ALIASES = {
+    "bangalore urban": "Bengaluru Urban", "bengaluru urban": "Bengaluru Urban",
+    "bangalore rural": "Bengaluru Rural", "bengaluru rural": "Bengaluru Rural",
+    "bangalore": "Bengaluru Urban", "bengaluru": "Bengaluru Urban",
+    "mysore": "Mysuru", "mysuru": "Mysuru", "bellary": "Ballari", "ballari": "Ballari",
+    "belgaum": "Belagavi", "belagavi": "Belagavi", "bijapur": "Vijayapura", "vijayapura": "Vijayapura",
+    "vijayapur": "Vijayapura", "gulbarga": "Kalaburagi", "kalaburagi": "Kalaburagi",
+    "shimoga": "Shivamogga", "shivamogga": "Shivamogga", "mangalore": "Dakshina Kannada",
+    "mangaluru": "Dakshina Kannada", "dakshina kannada": "Dakshina Kannada",
+    "south canara": "Dakshina Kannada", "karwar": "Uttara Kannada", "uttara kannada": "Uttara Kannada",
+    "north canara": "Uttara Kannada", "hubli": "Dharwad", "hubballi": "Dharwad",
+    "dharwad": "Dharwad", "chikkaballapur": "Chikkaballapur", "chikkaballapura": "Chikkaballapur",
+    "chamarajanagar": "Chamarajanagar", "chamarajanagara": "Chamarajanagar",
+    "tumkur": "Tumakuru", "tumakuru": "Tumakuru", "madikeri": "Kodagu", "coorg": "Kodagu", "kodagu": "Kodagu",
+    "bagalkot": "Bagalkot", "bidar": "Bidar", "chitradurga": "Chitradurga", "davangere": "Davangere",
+    "gadag": "Gadag", "hassan": "Hassan", "haveri": "Haveri", "kolar": "Kolar", "koppal": "Koppal",
+    "mandya": "Mandya", "raichur": "Raichur", "ramanagara": "Ramanagara", "ramanagar": "Ramanagara",
+    "udupi": "Udupi", "vijayanagar": "Vijayanagar", "vijayanagara": "Vijayanagar", "yadgir": "Yadgir"
+}
+
+VOICE_CROP_SYNONYMS = {
+    "tomato": "Tomato", "tomatoes": "Tomato", "tamatar": "Tomato", "thakkali": "Tomato",
+    "potato": "Potato", "potatoes": "Potato", "aloo": "Potato", "alu": "Potato", "alugadde": "Potato",
+    "onion": "Onion", "onions": "Onion", "pyaz": "Onion", "pyaaz": "Onion", "kanda": "Onion", "eerulli": "Onion",
+    "cucumber": "Cucumber", "cucumbers": "Cucumber", "kheera": "Cucumber", "southekai": "Cucumber"
+}
+
+VOICE_NUMBER_WORDS = {
+    "zero": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+    "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14, "fifteen": 15, "sixteen": 16, "seventeen": 17,
+    "eighteen": 18, "nineteen": 19, "twenty": 20, "thirty": 30, "forty": 40, "fifty": 50, "sixty": 60, "seventy": 70,
+    "eighty": 80, "ninety": 90, "hundred": 100
+}
+
+def parse_voice_command_text(text: str) -> dict:
+    import re
+    clean = re.sub(r'[,:;!?]', ' ', text.lower())
+    clean = re.sub(r'\.(?!\d)', ' ', clean)
+    clean = re.sub(r'\s+', ' ', clean).strip()
+
+    extracted_crop = None
+    for syn, std in VOICE_CROP_SYNONYMS.items():
+        if re.search(rf'\b{syn}\b', clean):
+            extracted_crop = std
+            break
+    if not extracted_crop:
+        for c in CROP_MASTER.keys():
+            if c.lower() in clean:
+                extracted_crop = c
+                break
+
+    extracted_district = None
+    for alias in sorted(VOICE_DISTRICT_ALIASES.keys(), key=len, reverse=True):
+        if re.search(rf'\b{alias}\b', clean):
+            extracted_district = VOICE_DISTRICT_ALIASES[alias]
+            break
+    if not extracted_district:
+        for d in DISTRICT_COORDS.keys():
+            if d.lower() in clean:
+                extracted_district = d
+                break
+
+    extracted_qty = None
+    m_num = re.search(r'\b(\d+(?:\.\d+)?)\s*(?:tons?|tonnes?|t\b|quintals?|kg)?', clean)
+    if m_num:
+        extracted_qty = float(m_num.group(1))
+    else:
+        for w, val in VOICE_NUMBER_WORDS.items():
+            if re.search(rf'\b{w}\s*(?:tons?|tonnes?|t\b)?', clean):
+                extracted_qty = float(val)
+                break
+
+    extracted_temp = None
+    m_temp = re.search(r'(?:temp(?:erature)?)\s*(?:is|of|at)?\s*(\d+(?:\.\d+)?)', clean)
+    if m_temp:
+        extracted_temp = float(m_temp.group(1))
+
+    extracted_hum = None
+    m_hum = re.search(r'(?:humidity)\s*(?:is|of|at)?\s*(\d+(?:\.\d+)?)', clean)
+    if m_hum:
+        extracted_hum = float(m_hum.group(1))
+
+    return {
+        "crop": extracted_crop,
+        "district": extracted_district,
+        "quantity": extracted_qty,
+        "temperature": extracted_temp,
+        "humidity": extracted_hum
+    }
+
 @router.post("/voice-parse")
-async def parse_voice(file: UploadFile = File(...)):
+async def parse_voice(file: UploadFile = File(...), lang: Optional[str] = Form("en-IN")):
     import speech_recognition as sr
     import io
     recognizer = sr.Recognizer()
@@ -725,40 +816,32 @@ async def parse_voice(file: UploadFile = File(...)):
         contents = await file.read()
         wav_buffer = io.BytesIO(contents)
         with sr.AudioFile(wav_buffer) as source:
-            recognizer.adjust_for_ambient_noise(source, duration=0.5)
+            recognizer.adjust_for_ambient_noise(source, duration=0.3)
             audio_data = recognizer.record(source)
-        transcribed_text = recognizer.recognize_google(audio_data)
-        
-        tt_lower = transcribed_text.lower().replace("bangalore", "bengaluru")
-        
-        extracted_crop = None
-        for c in CROP_MASTER.keys():
-            if c.lower() in tt_lower:
-                extracted_crop = c
-                break
-                
-        extracted_district = None
-        for d in DISTRICT_COORDS.keys():
-            if d.lower() in tt_lower or d.lower().split()[0] in tt_lower.split():
-                extracted_district = d
-                break
-                
-        extracted_qty = None
-        for w in transcribed_text.split():
-            if w.replace(".", "", 1).isdigit():
-                extracted_qty = float(w)
-                break
-                
+
+        selected_lang = lang if lang in ["en-IN", "en-US", "kn-IN", "hi-IN"] else "en-IN"
+        try:
+            transcribed_text = recognizer.recognize_google(audio_data, language=selected_lang)
+        except sr.UnknownValueError:
+            if selected_lang != "en-US":
+                transcribed_text = recognizer.recognize_google(audio_data, language="en-US")
+            else:
+                raise
+
+        parsed = parse_voice_command_text(transcribed_text)
         return {
             "text": transcribed_text,
-            "crop": extracted_crop,
-            "district": extracted_district,
-            "quantity": extracted_qty
+            "crop": parsed["crop"],
+            "district": parsed["district"],
+            "quantity": parsed["quantity"],
+            "temperature": parsed["temperature"],
+            "humidity": parsed["humidity"]
         }
     except sr.UnknownValueError:
-        raise HTTPException(status_code=400, detail="Could not understand audio")
+        raise HTTPException(status_code=400, detail="Could not understand audio. Please speak clearly into the microphone.")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error in parse_voice: %s", e)
+        raise HTTPException(status_code=500, detail=f"Voice parsing error: {str(e)}")
 
 class AdvisoryRequest(BaseModel):
     lang: str
