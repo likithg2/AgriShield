@@ -1,6 +1,9 @@
 """
 config.py — Application Settings
 Uses environment variables with sensible defaults for local development.
+
+IMPORTANT: Never commit real secrets. Set all secrets via environment variables
+in production (Render dashboard). See .env.example for the full list.
 """
 
 import os
@@ -16,22 +19,28 @@ DEFAULT_DB_PATH = ROOT_DIR / "postharvest.db"
 
 class Settings(BaseSettings):
     # ── Database ──────────────────────────────────────────────────────────────
-    # Default: SQLite (zero setup, works immediately)
-    # For production: set DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postharvest_db
-    DATABASE_URL: str = os.getenv("DATABASE_URL", f"sqlite:///{DEFAULT_DB_PATH.as_posix()}")
+    # Default: SQLite (zero setup, works immediately for local dev)
+    # Production: Set DATABASE_URL=postgresql://user:pass@host:5432/dbname
+    DATABASE_URL: str = f"sqlite:///{DEFAULT_DB_PATH.as_posix()}"
 
     # ── JWT Authentication ────────────────────────────────────────────────────
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "bit-major-project-2023-27-super-secret-key-change-in-production")
+    # MUST be overridden in production via SECRET_KEY env var
+    SECRET_KEY: str = "CHANGE_ME_IN_PRODUCTION_USE_A_LONG_RANDOM_STRING"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
 
-    # ── API Keys (forwarded from the Streamlit layer) ─────────────────────────
-    WEATHER_API_KEY: str = os.getenv("WEATHER_API_KEY", "f73ec997eba0f6cd98247c6116943aa5")
-    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
-    GOOGLE_API_KEY: str = os.getenv("GOOGLE_API_KEY", "")
-    MARKET_API_KEY: str = os.getenv("MARKET_API_KEY", "")
+    # ── External API Keys ─────────────────────────────────────────────────────
+    # Set these via environment variables — never hardcode real keys here
+    WEATHER_API_KEY: str = ""
+    GEMINI_API_KEY: str = ""
+    GOOGLE_API_KEY: str = ""
+    MARKET_API_KEY: str = ""
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
 
 settings = Settings()

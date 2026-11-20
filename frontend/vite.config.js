@@ -5,6 +5,8 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [react()],
   server: {
-    open: true
-  }
+    open: true,
+  },
+  // Expose all VITE_* env vars to the client bundle
+  envPrefix: 'VITE_',
 })

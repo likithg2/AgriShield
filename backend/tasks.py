@@ -48,7 +48,7 @@ async def background_monitoring_loop():
                                 f"• Crop: {shipment.crop}\n"
                                 f"• Tonnage: {shipment.tonnage} Tons\n"
                                 f"• Market Price: {market_price}\n"
-                                f"• Farmer: {farmer.name if farmer else 'N/A'}\n"
+                                f"• Farmer: {farmer.full_name if farmer else 'N/A'}\n"
                                 f"• Vehicle Reg: {shipment.vehicle_reg_number or 'N/A'}\n"
                                 f"• Arrival Time: {now.strftime('%Y-%m-%d %H:%M:%S UTC')}"
                             )
@@ -131,7 +131,7 @@ async def background_monitoring_loop():
                                     f"• Crop: {shipment.crop}\n"
                                     f"• Tonnage: {shipment.tonnage} Tons\n"
                                     f"• Hours Left: {hr:.1f} hrs\n"
-                                    f"• Farmer: {farmer.name if farmer else 'N/A'}\n"
+                                    f"• Farmer: {farmer.full_name if farmer else 'N/A'}\n"
                                     f"• Action Taken: Auto-routed to nearest available Industry Buyer\n"
                                 )
                                 db.add(Notification(

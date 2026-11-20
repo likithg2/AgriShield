@@ -3,6 +3,10 @@ venv/
 env/
 __pycache__/
 .env
+.env.local
+.env.*.local
+frontend/.env.local
+frontend/.env.*.local
 .translation_cache.json
 .session_cache.json
 *.db
@@ -10,7 +14,7 @@ scratch/
 test.jpg
 test.mp3
 test_chat.py
-*.keras
+# *.keras — model file is tracked in git for deployment (11 MB, within GitHub limits)
 assets/uploads/
 node_modules/
 .vscode/

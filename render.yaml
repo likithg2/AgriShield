@@ -1,0 +1,40 @@
+# render.yaml — Render.com deployment configuration for AgriShield backend
+# Docs: https://render.com/docs/yaml-spec
+
+services:
+  - type: web
+    name: agrishield-api
+    runtime: python
+    region: singapore  # Closest free-tier region to India
+
+    # Build: install Python dependencies from backend/requirements.txt
+    buildCommand: pip install -r backend/requirements.txt
+
+    # Start: run uvicorn from the project root so "backend" package is resolvable
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+
+    # Health check path — Render uses this to verify the service is up
+    healthCheckPath: /api/health
+
+    # Environment variables — set SECRET values in the Render dashboard, NOT here
+    envVars:
+      - key: DATABASE_URL
+        sync: false          # Set in Render dashboard (Supabase PostgreSQL URL)
+      - key: SECRET_KEY
+        sync: false          # Set in Render dashboard (long random string)
+      - key: ALLOWED_ORIGINS
+        sync: false          # Set in Render dashboard (your Vercel frontend URL)
+      - key: WEATHER_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: MARKET_API_KEY
+        sync: false
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+
+    # Render Free plan: service spins down after 15 min inactivity.
+    # Cold start takes ~30-60s. This is expected behaviour on the free tier.
+    plan: free
