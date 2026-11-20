@@ -110,7 +110,7 @@ const WarehouseLogs = () => {
       <div className="space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <h2 className="text-2xl font-bold flex items-center gap-2">📚 Shipment Logs & History</h2>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
             <div className="relative">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
               <input 
@@ -118,7 +118,7 @@ const WarehouseLogs = () => {
                 placeholder="Search logs..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="input-field py-1.5 text-sm w-[250px] bg-background/50"
+                className="input-field py-1.5 text-sm w-full sm:w-[220px] bg-background/50"
                 style={{ paddingLeft: '2.5rem' }}
               />
             </div>
@@ -127,7 +127,7 @@ const WarehouseLogs = () => {
               <select 
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="input-field py-1.5 text-sm bg-background/50 dark:bg-black/90 dark:text-white appearance-none"
+                className="input-field py-1.5 text-sm w-full sm:w-auto bg-background/50 dark:bg-black/90 dark:text-white appearance-none"
                 style={{ paddingLeft: '2.5rem' }}
               >
                 <option value="">All Statuses</option>

@@ -19,17 +19,17 @@ const Home = () => {
 
       {/* Hero Text */}
       <div className="space-y-6">
-        <h1 className="text-5xl md:text-6xl font-bold tracking-tight text-text-main">
+        <h1 className="text-3xl sm:text-5xl md:text-6xl font-bold tracking-tight text-text-main">
           Prevent Post-Harvest <br/>
           <span className="text-primary">Loss Before It Happens</span>
         </h1>
-        <p className="text-lg text-text-muted max-w-2xl mx-auto">
+        <p className="text-base sm:text-lg text-text-muted max-w-2xl mx-auto">
           Empowering farmers and warehouse managers with predictive analytics to minimize spoilage and maximize yield value.
         </p>
       </div>
 
       {/* Action Buttons */}
-      <div className="flex items-center gap-4 justify-center">
+      <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 justify-center w-full">
         {user ? (
           <>
             <NavLink to="/dashboard">

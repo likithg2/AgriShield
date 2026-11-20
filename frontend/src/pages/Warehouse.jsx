@@ -527,7 +527,7 @@ const Warehouse = () => {
                   <input id="inspect-transit-temp" type="number" step="0.1" className="input-field" value={inspectTemp} onChange={(e) => setInspectTemp(e.target.value)} />
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <label htmlFor="inspect-bruising-select" className="block text-sm font-medium mb-1">Bruising Assessment</label>
                     <select id="inspect-bruising-select" className="input-field dark:bg-black/90 dark:text-white" value={inspectBruising} onChange={e => setInspectBruising(e.target.value)}>
@@ -663,16 +663,16 @@ const Warehouse = () => {
         <>
           <div className="h-px bg-glass-border w-full my-6"></div>
           <div className="space-y-3">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
               <h2 className="text-xl font-bold flex items-center gap-2">🔗 Regional Cross-Connect</h2>
-              <div className="relative">
+              <div className="relative w-full sm:w-auto">
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
                 <input 
                   type="text" 
                   placeholder="Search by facility or district..." 
                   value={crossConnectSearch}
                   onChange={(e) => { setCrossConnectSearch(e.target.value); setCrossConnectPage(1); }}
-                  className="input-field py-1.5 text-sm w-[400px] bg-background/50"
+                  className="input-field py-1.5 text-sm w-full sm:w-[320px] md:w-[400px] bg-background/50"
                   style={{ paddingLeft: '2.5rem' }}
                 />
               </div>

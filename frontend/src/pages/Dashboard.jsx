@@ -284,14 +284,14 @@ const Dashboard = () => {
           <p className="text-text-muted">Welcome back, {user.full_name}</p>
         </div>
         
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4 w-full md:w-auto">
           {user.role === 'admin' && allWarehouses.length > 0 && (
-            <div className="flex items-center gap-3 bg-white/40 dark:bg-black/20 px-4 py-2 rounded-xl border border-glass-border">
-              <span className="text-sm font-medium text-text-muted">Supervising:</span>
+            <div className="flex items-center gap-3 bg-white/40 dark:bg-black/20 px-4 py-2 rounded-xl border border-glass-border w-full sm:w-auto">
+              <span className="text-sm font-medium text-text-muted shrink-0">Supervising:</span>
               <select
                 value={selectedAdminWarehouseId || ''}
                 onChange={(e) => setAdminWarehouse(Number.parseInt(e.target.value, 10))}
-                className="input-field py-1 px-3 text-sm min-w-[200px] bg-white text-gray-900 border border-gray-300 dark:bg-black/90 dark:text-white dark:border-white/10"
+                className="input-field py-1 px-3 text-sm w-full sm:w-auto min-w-0 sm:min-w-[200px] bg-white text-gray-900 border border-gray-300 dark:bg-black/90 dark:text-white dark:border-white/10"
               >
                 {allWarehouses.map(w => (
                   <option key={w.id} value={w.id} className="bg-white text-gray-900 dark:bg-gray-900 dark:text-white">{w.facility_name} ({w.district})</option>
@@ -398,7 +398,7 @@ const Dashboard = () => {
       )}
       
       {/* KPI CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {user.role === 'farmer' ? (
           <>
             <GlassCard>
@@ -461,7 +461,7 @@ const Dashboard = () => {
             <h2 className="text-2xl font-bold flex items-center gap-2">
               <Truck size={24} className="text-primary"/> Active Shipments
             </h2>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
               <div className="relative">
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
                 <input 
@@ -469,7 +469,7 @@ const Dashboard = () => {
                   placeholder="Search shipments..." 
                   value={activeShipmentsSearch}
                   onChange={(e) => { setActiveShipmentsSearch(e.target.value); setActiveShipmentsPage(1); }}
-                  className="input-field py-1.5 text-sm w-[200px] bg-background/50"
+                  className="input-field py-1.5 text-sm w-full sm:w-[200px] bg-background/50"
                   style={{ paddingLeft: '2.5rem' }}
                 />
               </div>
@@ -478,7 +478,7 @@ const Dashboard = () => {
                 <select 
                   value={activeShipmentsFilter}
                   onChange={(e) => { setActiveShipmentsFilter(e.target.value); setActiveShipmentsPage(1); }}
-                  className="input-field py-1.5 text-sm bg-white text-gray-900 border border-gray-300 dark:bg-black/90 dark:text-white dark:border-white/10"
+                  className="input-field py-1.5 text-sm w-full sm:w-auto bg-white text-gray-900 border border-gray-300 dark:bg-black/90 dark:text-white dark:border-white/10"
                   style={{ paddingLeft: '2.5rem' }}
                 >
                   <option value="" className="bg-white text-gray-900 dark:bg-gray-900 dark:text-white">All Statuses</option>
@@ -797,7 +797,7 @@ const Dashboard = () => {
                   <h3 className="font-semibold text-primary mb-3 text-lg flex items-center gap-2">
                     <Truck size={18} /> Logistics Route
                   </h3>
-                  <div className="grid grid-cols-2 gap-y-4 gap-x-6 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 sm:gap-y-4 gap-x-6 text-sm">
                     {selectedActiveShipment.prediction?.district && (
                       <div><span className="text-text-muted">Origin:</span> <span className="font-medium">{selectedActiveShipment.prediction.district}</span></div>
                     )}

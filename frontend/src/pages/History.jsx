@@ -95,7 +95,7 @@ const History = () => {
   };
 
   return (
-    <div className="w-full px-4 sm:px-[2cm] pb-12 space-y-8">
+    <div className="w-full px-3 sm:px-6 md:px-8 max-w-7xl mx-auto pb-12 space-y-8">
       <div>
         <h1 className="text-3xl font-bold flex items-center gap-2"><HistoryIcon className="text-primary" /> Prediction History</h1>
         <p className="text-text-muted">Complete record of all your crop spoilage analysis runs</p>
@@ -153,7 +153,7 @@ const History = () => {
                        }
                      }}
                      onClick={() => setSelectedPrediction(p)}>
-                  <div className="flex justify-between items-start mb-4">
+                  <div className="flex flex-col sm:flex-row justify-between items-start gap-2 mb-4">
                     <div>
                       <h3 className="text-xl font-bold flex items-center gap-2 mb-1">
                         {getCropEmoji(p.crop)} {p.crop}
@@ -220,7 +220,7 @@ const History = () => {
             })}
             </div>
             {/* Pagination Controls */}
-            <div className="flex justify-between items-center mt-6 pt-4 border-t border-glass-border">
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-3 mt-6 pt-4 border-t border-glass-border">
               <span className="text-sm text-text-muted">
                 Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, total)} of {total} entries
               </span>

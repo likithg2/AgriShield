@@ -445,7 +445,7 @@ const Prediction = () => {
             </span>
             <span className="text-text-muted">— {weatherData.desc} conditions in {formData.district}</span>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5 sm:gap-4">
             <GlassCard className="p-4 flex flex-col items-center justify-center text-center bg-black/20 border-white/5 hover:border-primary/50 transition-colors">
               <div className="text-2xl mb-2 notranslate" translate="no">🌡️</div>
               <div className="text-xl font-bold">{weatherData.temp.toFixed(1)}°C</div>
@@ -490,11 +490,11 @@ const Prediction = () => {
               {analyzingImage && <div className="text-primary animate-pulse flex items-center gap-2"><Loader className="animate-spin" size={16}/> Analyzing image with MobileNetV2...</div>}
               
               {imagePreview && (
-                <div className="flex gap-4 items-center bg-background/50 p-4 rounded-xl border border-white/5">
+                <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center bg-background/50 p-4 rounded-xl border border-white/5">
                   <img 
                     src={imagePreview} 
                     alt="Upload" 
-                    className="w-24 h-24 object-cover rounded-lg shadow-md cursor-pointer hover:opacity-80 transition-opacity" 
+                    className="w-24 h-24 object-cover rounded-lg shadow-md cursor-pointer hover:opacity-80 transition-opacity shrink-0" 
                     onClick={() => {
                       setModalImageSrc(imagePreview);
                       setIsModalOpen(true);
@@ -503,7 +503,7 @@ const Prediction = () => {
                   <AnimatePresence>
                   {imageAnalysis && (
                     <motion.div 
-                      className="flex-1 grid grid-cols-2 gap-3"
+                      className="w-full sm:flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3"
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
@@ -637,7 +637,7 @@ const Prediction = () => {
               <Leaf className="text-primary" /> {t("Input Parameters")}
             </h2>
             <form onSubmit={handleAnalyze} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="predict-crop-select" className="text-xs text-text-muted font-medium mb-1 block">Select Crop</label>
                   <select id="predict-crop-select" name="crop" value={formData.crop} onChange={handleChange} className="input-field bg-white text-gray-900 border border-gray-300 w-full dark:bg-black/90 dark:text-white dark:border-white/10" required>
@@ -682,13 +682,13 @@ const Prediction = () => {
                   <label htmlFor="predict-humidity-input" className="text-xs text-text-muted font-medium mb-1 block">Humidity (%)</label>
                   <input id="predict-humidity-input" type="number" step="0.1" name="humidity" value={formData.humidity} onChange={handleChange} className="input-field bg-primary/5 w-full" />
                 </div>
-                <div className="col-span-2">
+                <div className="col-span-1 sm:col-span-2">
                   <label htmlFor="predict-spoilage-prob-input" className="text-xs text-text-muted font-medium mb-1 block">Picture Spoilage Prob</label>
                   <input id="predict-spoilage-prob-input" type="text" disabled value={imageAnalysis ? imageAnalysis.rotten_pct.toFixed(1) + '%' : 'Not Analyzed'} className="input-field bg-primary/5 w-full opacity-70" />
                 </div>
               </div>
               
-              <div className="flex gap-4 mt-4">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-4">
                 <Button type="submit" className="flex-1 py-4 text-lg font-bold shadow-lg shadow-primary/30" disabled={loading}>
                   {loading ? 'Analyzing...' : t("Analyze Spoilage Risk")}
                 </Button>
@@ -729,7 +729,7 @@ const Prediction = () => {
                 <h2 className="text-2xl font-bold mb-4">{t("Prediction Output")}</h2>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                  <div className="flex justify-center items-center bg-gradient-to-br from-primary/10 to-transparent border border-primary/20 rounded-xl shadow-inner backdrop-blur-sm">
+                  <div className="flex justify-center items-center bg-gradient-to-br from-primary/10 to-transparent border border-primary/20 rounded-xl shadow-inner backdrop-blur-sm p-2 w-full overflow-hidden">
                       <Plot
                         data={[
                           {
@@ -747,12 +747,14 @@ const Prediction = () => {
                           }
                         ]}
                         layout={{
-                          width: 340,
+                          autosize: true,
                           height: 250,
                           margin: { t: 40, b: 20, l: 35, r: 35 },
                           paper_bgcolor: "rgba(0,0,0,0)",
                           font: { color: isDark ? "#ffffff" : "#1f2937" }
                         }}
+                        useResizeHandler={true}
+                        style={{ width: "100%", maxWidth: "340px", height: "250px" }}
                         config={{ displayModeBar: false }}
                       />
                   </div>

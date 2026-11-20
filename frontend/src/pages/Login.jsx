@@ -120,7 +120,7 @@ const Login = () => {
       <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-primary/20 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob"></div>
       <div className="absolute top-1/3 right-1/4 w-72 h-72 bg-secondary/20 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-2000"></div>
 
-      <GlassCard className="w-full max-w-md relative z-10 p-8 border-t border-l border-white/40 shadow-2xl backdrop-blur-xl">
+      <GlassCard className="w-full max-w-md relative z-10 p-5 sm:p-8 mx-2 sm:mx-0 border-t border-l border-white/40 shadow-2xl backdrop-blur-xl">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 text-primary mb-4">
             <Leaf size={32} />

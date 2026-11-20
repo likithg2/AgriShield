@@ -259,7 +259,7 @@ const ChatWidget = () => {
 
   return (
     <>
-      <div className="fixed bottom-6 right-6 z-50">
+      <div className="fixed bottom-3 right-3 sm:bottom-6 sm:right-6 z-50">
         <AnimatePresence>
           {!isOpen && (
             <motion.button
@@ -269,9 +269,9 @@ const ChatWidget = () => {
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={() => setIsOpen(true)}
-              className="bg-primary hover:bg-primary-dark text-black p-4 rounded-full shadow-lg shadow-primary/20 flex items-center justify-center transition-colors"
+              className="bg-primary hover:bg-primary-dark text-black p-3 sm:p-4 rounded-full shadow-lg shadow-primary/20 flex items-center justify-center transition-colors"
             >
-              <MessageSquare className="w-6 h-6" />
+              <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6" />
             </motion.button>
           )}
         </AnimatePresence>
@@ -283,7 +283,7 @@ const ChatWidget = () => {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.95 }}
               transition={{ duration: 0.2 }}
-              className="absolute bottom-0 right-0 w-[350px] sm:w-[400px] h-[500px] bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+              className="absolute bottom-0 right-0 w-[calc(100vw-1.5rem)] sm:w-[400px] max-w-[420px] h-[calc(100vh-6rem)] sm:h-[500px] max-h-[580px] bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden"
             >
               {/* Header */}
               <div className="bg-primary/10 border-b border-white/10 p-4 flex items-center justify-between z-20">
