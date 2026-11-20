@@ -68,11 +68,17 @@ _raw_origins = os.getenv(
     "ALLOWED_ORIGINS",
     "http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173",
 )
-ALLOWED_ORIGINS = [o.strip() for o in _raw_origins.split(",") if o.strip()]
+# Normalize origins by trimming whitespace and trailing slashes
+ALLOWED_ORIGINS = [o.strip().rstrip("/") for o in _raw_origins.split(",") if o.strip()]
+
+# Restricted regex for trusted AgriShield Vercel deployments (production + preview PR branches)
+# Matches: https://agrishield.vercel.app, https://agrishield-*.vercel.app, https://agrishield-*-likithg2s-projects.vercel.app
+ALLOWED_ORIGIN_REGEX = r"^https://agrishield(-[a-z0-9-]+)?(-likithg2s-projects)?\.vercel\.app$"
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=ALLOWED_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

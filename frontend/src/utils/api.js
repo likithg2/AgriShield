@@ -1,8 +1,15 @@
 import axios from 'axios';
 
-// Use VITE_API_BASE_URL env var (set in .env.local for dev, Vercel dashboard for prod)
-// Falls back to localhost for local development.
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+// Resolve API base URL:
+// 1. Environment variable if set (trimmed of trailing slashes).
+// 2. Production fallback points to the Render backend (never silently to localhost).
+// 3. Development fallback points to local server (http://localhost:8000/api).
+const rawEnvUrl = import.meta.env.VITE_API_BASE_URL;
+const API_BASE_URL = rawEnvUrl
+  ? rawEnvUrl.replace(/\/+$/, '')
+  : import.meta.env.PROD
+  ? 'https://agrishield-api.onrender.com/api'
+  : 'http://localhost:8000/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -30,6 +37,55 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+/**
+ * Formats API errors into human-readable messages distinguishing
+ * network failures, HTTP 413, HTTP 422 validation, and HTTP 500 server errors.
+ */
+export const formatApiError = (err, fallback = "An unexpected error occurred") => {
+  if (!err) return fallback;
+
+  // 1. Network / CORS / Unreachable backend
+  if (!err.response) {
+    if (err.code === 'ERR_NETWORK' || err.message?.toLowerCase().includes('network')) {
+      return 'Network connection failed. The backend service may be starting up (cold start) or unreachable. Please retry in a few moments.';
+    }
+    return err.message || 'Unable to connect to the backend service.';
+  }
+
+  const status = err.response.status;
+
+  // 2. HTTP 413 Payload Too Large
+  if (status === 413) {
+    return 'The uploaded image or request payload is too large. Please select a smaller photo or compress it before uploading.';
+  }
+
+  // 3. HTTP 422 Unprocessable Entity (FastAPI validation)
+  if (status === 422) {
+    const detail = err.response.data?.detail;
+    if (Array.isArray(detail)) {
+      const messages = detail.map((d) => {
+        const field = d.loc?.filter((l) => l !== 'body').join('.') || 'Field';
+        return `${field}: ${d.msg}`;
+      });
+      return `Input validation failed: ${messages.join(', ')}`;
+    }
+    if (typeof detail === 'string') return detail;
+    return 'Validation error. Please verify all required inputs.';
+  }
+
+  // 4. HTTP 500+ Internal Server Error
+  if (status >= 500) {
+    const detail = err.response.data?.detail;
+    if (typeof detail === 'string' && detail.length < 150) {
+      return `Server error (${status}): ${detail}`;
+    }
+    return 'Internal server error. The server encountered an issue while processing your prediction. Please try again.';
+  }
+
+  // Other status codes (400, 403, 404, etc.)
+  return err.response.data?.detail || err.message || fallback;
+};
 
 export const authAPI = {
   login: (login_id, password) => api.post('/auth/login', { login_id, password }),

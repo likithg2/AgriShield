@@ -9,7 +9,7 @@ import GlassCard from '../components/GlassCard';
 import { AuthContext } from '../context/AuthContext';
 import { LanguageContext } from '../context/LanguageContext';
 import { ThemeContext } from '../context/ThemeContext';
-import { predictionsAPI, shipmentsAPI } from '../utils/api';
+import { predictionsAPI, shipmentsAPI, formatApiError } from '../utils/api';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import ImageModal from '../components/ImageModal';
@@ -38,6 +38,61 @@ const DISTRICT_LIST = [
   "Kolar", "Koppal", "Mandya", "Mysuru", "Raichur", "Ramanagara", "Shivamogga",
   "Tumakuru", "Udupi", "Uttara Kannada", "Vijayanagar", "Vijayapura", "Yadgir"
 ];
+
+/**
+ * Resizes an image file to max maxWidth x maxHeight while preserving aspect ratio,
+ * and encodes it as JPEG at given quality (~0.7).
+ * Gracefully falls back to raw data URL or null on failure.
+ */
+const compressImageToBase64 = (file, maxWidth = 800, maxHeight = 800, quality = 0.7) => {
+  return new Promise((resolve) => {
+    if (!file || !file.type.startsWith('image/')) {
+      resolve(null);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onerror = () => resolve(null);
+    reader.onload = (readerEvent) => {
+      const img = new Image();
+      img.onerror = () => {
+        // Fallback to uncompressed data URL if Image constructor fails
+        resolve(readerEvent.target?.result || null);
+      };
+      img.onload = () => {
+        try {
+          let { width, height } = img;
+          if (width > maxWidth || height > maxHeight) {
+            if (width / height > maxWidth / maxHeight) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            } else {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(readerEvent.target?.result || null);
+            return;
+          }
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+          resolve(compressedDataUrl);
+        } catch (e) {
+          console.warn('Image compression failed, using original:', e);
+          resolve(readerEvent.target?.result || null);
+        }
+      };
+      img.src = readerEvent.target?.result;
+    };
+    reader.readAsDataURL(file);
+  });
+};
 
 const Prediction = () => {
   const { user } = useContext(AuthContext);
@@ -194,7 +249,7 @@ const Prediction = () => {
       }
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.detail || err.message || "Failed to analyze image");
+      toast.error(formatApiError(err, "Failed to analyze image"));
     } finally {
       setAnalyzingImage(false);
     }
@@ -310,14 +365,10 @@ const Prediction = () => {
       const diffTime = Math.abs(today - hDate);
       const storageDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       
-      // Convert image file to base64 if it exists
+      // Compress and convert image file to base64 if it exists (capped to 800x800 JPEG 0.7)
       let base64Image = null;
       if (imageFile) {
-        const reader = new FileReader();
-        base64Image = await new Promise((resolve) => {
-          reader.onloadend = () => resolve(reader.result);
-          reader.readAsDataURL(imageFile);
-        });
+        base64Image = await compressImageToBase64(imageFile);
       }
       
       const payload = {
@@ -341,14 +392,9 @@ const Prediction = () => {
       void fetchAdvisoryAudio(data.advisory_transcript_en, 'en');
       
     } catch (err) {
-      let errorMsg = err.response?.data?.detail || err.message;
-      if (Array.isArray(errorMsg)) {
-        errorMsg = errorMsg.map(e => `${e.loc?.join('.') || 'Field'}: ${e.msg}`).join(', ');
-      } else if (typeof errorMsg === 'object') {
-        errorMsg = JSON.stringify(errorMsg);
-      }
-      setError(String(errorMsg));
-      toast.error("Prediction Failed");
+      const errorMsg = formatApiError(err, "Prediction failed. Please check your inputs and try again.");
+      setError(errorMsg);
+      toast.error(errorMsg.length > 70 ? "Prediction Failed" : errorMsg);
     } finally {
       setLoading(false);
     }
