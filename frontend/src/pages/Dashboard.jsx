@@ -5,9 +5,8 @@ import { AuthContext } from '../context/AuthContext';
 import { NotificationContext } from '../context/NotificationContext';
 import GlassCard from '../components/GlassCard';
 import Button from '../components/Button';
-import { farmersAPI, authAPI, shipmentsAPI, adminAPI } from '../utils/api';
-import { Package, Trash2, Bell, Edit2, Check, X, Truck, AlertTriangle, Search, Filter, KeyRound, Eye, EyeOff, History, Users, Key } from 'lucide-react';
-import { useResendTimer } from '../hooks/useResendTimer';
+import { farmersAPI, shipmentsAPI, adminAPI } from '../utils/api';
+import { Package, Bell, X, Truck, AlertTriangle, Search, Filter, History, Users, Key } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const getCropEmoji = (crop) => {
@@ -16,7 +15,7 @@ const getCropEmoji = (crop) => {
 };
 
 const Dashboard = () => {
-  const { user, login, logout, selectedAdminWarehouseId, setAdminWarehouse } = useContext(AuthContext); // we can use login() to update user state if needed, or just reload
+  const { user, selectedAdminWarehouseId, setAdminWarehouse } = useContext(AuthContext);
   const { notifications: globalNotifs, openNotification, setShowNotificationHistory } = useContext(NotificationContext) || { notifications: [] };
   
   const [dashboardData, setDashboardData] = useState(null);
@@ -24,17 +23,6 @@ const Dashboard = () => {
   const [allWarehouses, setAllWarehouses] = useState([]);
   const [whShipmentIds, setWhShipmentIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
-  
-  // Profile Edit State
-  const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState({
-    full_name: user?.full_name || '',
-    phone: user?.phone || '',
-    district: user?.district || '',
-    email: user?.email || '',
-  });
-  const [updateMsg, setUpdateMsg] = useState({ type: '', text: '' });
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedActiveShipment, setSelectedActiveShipment] = useState(null);
 
   // Admin User Management State
@@ -73,29 +61,12 @@ const Dashboard = () => {
     }
   };
 
-  const handleDeleteAccount = async () => {
-    try {
-      await authAPI.deleteAccount();
-      logout();
-      toast.success("Account deleted successfully");
-    } catch (err) {
-      toast.error("Failed to delete account. Please try again.");
-    }
-  };
-
-
   // Active Shipments State
   const [activeShipmentsSearch, setActiveShipmentsSearch] = useState('');
   const [activeShipmentsFilter, setActiveShipmentsFilter] = useState('');
   const [spoilageCropFilter, setSpoilageCropFilter] = useState('');
   const [activeShipmentsPage, setActiveShipmentsPage] = useState(1);
   const SHIPMENTS_PER_PAGE = 10;
-
-  // Email OTP States
-  const [showEmailOTP, setShowEmailOTP] = useState(false);
-  const [emailOTP, setEmailOTP] = useState('');
-  const [showEmailOtpPassword, setShowEmailOtpPassword] = useState(false);
-  const { timeLeft, isTimerActive, startTimer, formattedTime } = useResendTimer(120);
 
   // Real-time ticking state
   const [currentTime, setCurrentTime] = useState(Date.now());
@@ -162,62 +133,6 @@ const Dashboard = () => {
   const displayNotifs = user?.role === 'farmer' 
     ? globalNotifs 
     : globalNotifs.filter(n => n.shipment_id ? whShipmentIds.has(n.shipment_id) : true);
-
-  const handleProfileUpdate = async (e) => {
-    e.preventDefault();
-    setUpdateMsg({ type: '', text: '' });
-    
-    // If email is changed, we need OTP verification first
-    if (editForm.email !== user.email) {
-      try {
-        await authAPI.requestEmailOTP(editForm.email);
-        setShowEmailOTP(true);
-        startTimer();
-      } catch (err) {
-        setUpdateMsg({ type: 'error', text: err.response?.data?.detail || 'Failed to send OTP.' });
-      }
-      return;
-    }
-    
-    // Otherwise just update profile
-    await executeProfileUpdate();
-  };
-
-  const executeProfileUpdate = async () => {
-    try {
-      const res = await authAPI.updateProfile(editForm);
-      const token = localStorage.getItem('auth_token');
-      login(token, res.data);
-      toast.success('Profile updated successfully!');
-      setIsEditing(false);
-    } catch (err) {
-      setUpdateMsg({ type: 'error', text: 'Failed to update profile.' });
-    }
-  };
-
-  const handleVerifyEmailOTP = async (e) => {
-    e.preventDefault();
-    setUpdateMsg({ type: '', text: '' });
-    try {
-      await authAPI.verifyEmailOTP(editForm.email, emailOTP);
-      // After successful email verification, update the rest of the profile
-      await executeProfileUpdate();
-      setShowEmailOTP(false);
-      setEmailOTP('');
-    } catch (err) {
-      setUpdateMsg({ type: 'error', text: err.response?.data?.detail || 'Invalid or expired OTP.' });
-    }
-  };
-  
-  const handleResendEmailOTP = async () => {
-    if (isTimerActive) return;
-    try {
-      await authAPI.requestEmailOTP(editForm.email);
-      startTimer();
-    } catch (err) {
-      setUpdateMsg({ type: 'error', text: 'Failed to resend OTP.' });
-    }
-  };
 
   if (!user) return <Navigate to="/login" />;
 
@@ -310,91 +225,8 @@ const Dashboard = () => {
               User Management
             </Button>
           )}
-          <Button variant="secondary" onClick={() => setIsEditing(!isEditing)} icon={isEditing ? X : Edit2}>
-            {isEditing ? 'Cancel Edit' : 'Edit Profile'}
-          </Button>
         </div>
       </div>
-
-      {/* PROFILE EDIT FORM */}
-      {isEditing && (
-        <GlassCard className="p-6 bg-white/60 dark:bg-black/30 border-primary/20">
-          <h2 className="text-xl font-bold mb-4">Edit Profile</h2>
-          {updateMsg.text && (
-            <div className={`mb-4 p-3 rounded-lg text-sm ${updateMsg.type === 'success' ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'}`}>
-              {updateMsg.text}
-            </div>
-          )}
-          {!showEmailOTP ? (
-            <form onSubmit={handleProfileUpdate} className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-              <div>
-                <label htmlFor="edit-profile-fullname" className="block text-sm font-medium mb-1">Full Name</label>
-                <input id="edit-profile-fullname" type="text" className="input-field" value={editForm.full_name} onChange={e => setEditForm({...editForm, full_name: e.target.value})} required />
-              </div>
-              <div>
-                <label htmlFor="edit-profile-phone" className="block text-sm font-medium mb-1">Phone</label>
-                <input id="edit-profile-phone" type="text" className="input-field" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} required />
-              </div>
-              <div>
-                <label htmlFor="edit-profile-email" className="block text-sm font-medium mb-1">Email</label>
-                <input id="edit-profile-email" type="email" className="input-field" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} required />
-              </div>
-              {user?.role === 'farmer' && (
-                <div>
-                  <label htmlFor="edit-profile-district" className="block text-sm font-medium mb-1">District</label>
-                  <select id="edit-profile-district" value={editForm.district} onChange={e => setEditForm({...editForm, district: e.target.value})} className="input-field pl-3 bg-white text-gray-900 border border-gray-300 dark:bg-black/90 dark:text-white dark:border-white/10" required>
-                    <option value="" className="bg-white text-gray-900 dark:bg-gray-900 dark:text-white">Select District</option>
-                    {["Bagalkot", "Ballari", "Belagavi", "Bengaluru Rural", "Bengaluru Urban", "Bidar", "Chamarajanagar", "Chikkaballapur", "Chitradurga", "Dakshina Kannada", "Davangere", "Dharwad", "Gadag", "Hassan", "Haveri", "Kalaburagi", "Kodagu", "Kolar", "Koppal", "Mandya", "Mysuru", "Raichur", "Ramanagara", "Shivamogga", "Tumakuru", "Udupi", "Uttara Kannada", "Vijayanagar", "Vijayapura", "Yadgir"].map(d => (
-                      <option key={d} value={d} className="bg-white text-gray-900 dark:bg-gray-900 dark:text-white">{d}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-              <div className="md:col-span-2 flex justify-between mt-4 border-t border-gray-200 dark:border-gray-800 pt-4">
-                <Button type="button" variant="secondary" onClick={() => setShowDeleteModal(true)} className="bg-red-50 dark:bg-red-900/20 text-danger hover:bg-red-100 dark:hover:bg-red-900/40 border-red-200 dark:border-red-800" icon={Trash2}>Delete Account</Button>
-                <Button type="submit" icon={Check}>Save Changes</Button>
-              </div>
-            </form>
-          ) : (
-            <form onSubmit={handleVerifyEmailOTP} className="space-y-4">
-              <div className="p-4 bg-warning/10 text-warning rounded-lg text-sm mb-4">
-                You are changing your email. An OTP has been sent to <strong>{editForm.email}</strong>.
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="edit-profile-otp" className="text-sm font-medium ml-1">6-Digit OTP</label>
-                <div className="relative">
-                  {!emailOTP && (
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-text-muted">
-                      <KeyRound size={18} />
-                    </div>
-                  )}
-                  <input 
-                    id="edit-profile-otp"
-                    type={showEmailOtpPassword ? "text" : "password"} 
-                    value={emailOTP}
-                    onChange={(e) => setEmailOTP(e.target.value)}
-                    className={`input-field ${emailOTP ? 'pl-4' : 'pl-10'} pr-10 bg-primary/10 dark:bg-primary/20 tracking-widest`}
-                    maxLength="6"
-                    required
-                  />
-                  <button type="button" onClick={() => setShowEmailOtpPassword(!showEmailOtpPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-main" tabIndex="-1">
-                    {showEmailOtpPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </div>
-              <div className="flex gap-4 justify-between items-center">
-                <button type="button" onClick={handleResendEmailOTP} disabled={isTimerActive} className="text-sm text-primary disabled:opacity-50 disabled:cursor-not-allowed font-medium hover:underline">
-                  {isTimerActive ? `Resend OTP in ${formattedTime()}` : 'Resend OTP'}
-                </button>
-                <div className="flex gap-2">
-                  <Button type="button" variant="secondary" onClick={() => setShowEmailOTP(false)}>Cancel</Button>
-                  <Button type="submit">Verify & Save</Button>
-                </div>
-              </div>
-            </form>
-          )}
-        </GlassCard>
-      )}
       
       {/* KPI CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
@@ -655,37 +487,6 @@ const Dashboard = () => {
         </div>
       </div>
 
-
-      <AnimatePresence>
-        {showDeleteModal && (
-          <motion.div 
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-x-0 bottom-0 top-[88px] z-40 flex items-center justify-center bg-white/20 dark:bg-black/40 backdrop-blur-md p-4"
-          >
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0, y: 20 }} 
-              animate={{ scale: 1, opacity: 1, y: 0 }} 
-              exit={{ scale: 0.95, opacity: 0, y: 20 }} 
-              transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
-              className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-2xl p-6 rounded-3xl max-w-md w-full shadow-[0_8px_32px_rgba(0,0,0,0.1)] space-y-6 border border-white/60 dark:border-white/10"
-            >
-            <div className="flex flex-col items-center text-center space-y-2">
-              <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-danger mb-2">
-                <Trash2 size={32} />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white">Delete Account?</h3>
-              <p className="text-gray-500 dark:text-gray-400 text-sm">
-                Are you sure you want to permanently delete your account? This action cannot be undone and all your data will be lost.
-              </p>
-            </div>
-            <div className="flex gap-4 w-full">
-              <Button type="button" variant="secondary" className="flex-1 justify-center" onClick={() => setShowDeleteModal(false)}>Cancel</Button>
-              <Button type="button" className="flex-1 justify-center bg-danger hover:bg-red-600 text-white border-0" onClick={handleDeleteAccount}>Yes, Delete</Button>
-            </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* ACTIVE SHIPMENT DETAILS MODAL */}
       <AnimatePresence>
