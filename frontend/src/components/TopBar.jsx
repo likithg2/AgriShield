@@ -80,12 +80,12 @@ const TopBar = () => {
       <div className="flex items-center gap-4">
         {user && (
           <>
-            <div className="flex items-center gap-2 bg-white/50 dark:bg-black/30 border border-white/40 dark:border-white/10 shadow-sm rounded-full px-2.5 py-1">
-              <Globe size={16} className="text-text-muted" />
+            <div className="flex items-center gap-2 bg-white/70 dark:bg-black/40 border border-gray-200 dark:border-white/10 shadow-sm rounded-full px-2.5 py-1">
+              <Globe size={16} className="text-gray-600 dark:text-gray-300" />
               <select 
                 value={language || 'en'} 
                 onChange={(e) => changeLanguage(e.target.value)}
-                className="bg-transparent text-text-main dark:text-white font-medium focus:outline-none cursor-pointer appearance-none"
+                className="bg-transparent text-gray-900 dark:text-white font-semibold text-xs focus:outline-none cursor-pointer"
               >
                 <option value="EN" className="bg-white text-gray-900 dark:bg-gray-900 dark:text-white">English</option>
                 <option value="KN" className="bg-white text-gray-900 dark:bg-gray-900 dark:text-white">ಕನ್ನಡ</option>

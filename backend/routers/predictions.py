@@ -9,17 +9,20 @@ import json
 import tempfile
 import os
 import sys
+import logging
 import subprocess
 from pydantic import BaseModel
 from pathlib import Path
 
 import numpy as np
 import joblib
+import joblib.numpy_pickle as npickle
 from fastapi import APIRouter, Depends, HTTPException, Query, File, UploadFile, Form
 from fastapi.responses import StreamingResponse
 import io
 from sqlalchemy.orm import Session
 from sqlalchemy import func as sql_func
+from sqlalchemy.exc import SQLAlchemyError
 
 from backend.database import get_db
 from backend.models import Prediction, User, ColdStorage
@@ -27,6 +30,8 @@ from backend.schemas import PredictionCreate, PredictionResponse, PredictionList
 from backend.auth import get_current_user
 from backend.config import settings
 import requests
+
+logger = logging.getLogger(__name__)
 
 # Ensure Cython internal loss module is mapped to sys.modules['_loss'] so that
 # unpickling artifacts_v2.pkl succeeds across Linux (Render) and different scikit-learn versions
@@ -39,6 +44,26 @@ except (ImportError, AttributeError):
         sys.modules["_loss"] = _sk_loss
     except ImportError:
         pass
+
+
+class _SafeNumpyUnpickler(npickle.NumpyUnpickler):
+    """Custom unpickler to redirect legacy or version-mismatched '_loss' modules to sklearn._loss._loss."""
+    def find_class(self, module, name):
+        if module == "_loss":
+            try:
+                import sklearn._loss._loss as cy_l
+                if hasattr(cy_l, name):
+                    return getattr(cy_l, name)
+            except (ImportError, AttributeError):
+                pass
+            try:
+                import sklearn._loss.loss as sk_l
+                if hasattr(sk_l, name):
+                    return getattr(sk_l, name)
+            except (ImportError, AttributeError):
+                pass
+        return super().find_class(module, name)
+
 
 router = APIRouter(prefix="/api/predictions", tags=["Predictions"])
 
@@ -54,7 +79,9 @@ def _load_artifacts():
     if _artifacts_cache is not None:
         return _artifacts_cache
     if not ARTIFACTS_PATH.exists():
-        return f"Error: Artifacts path does not exist: {ARTIFACTS_PATH}"
+        msg = f"Artifacts file does not exist at {ARTIFACTS_PATH}"
+        logger.error(msg)
+        return f"Error: {msg}"
     
     # Re-verify _loss mapping before unpickling
     if "_loss" not in sys.modules:
@@ -71,9 +98,21 @@ def _load_artifacts():
     try:
         _artifacts_cache = joblib.load(ARTIFACTS_PATH)
         return _artifacts_cache
-    except Exception as e:
-        import traceback
-        return f"Error loading artifacts: {type(e).__name__}: {e}\n{traceback.format_exc()}"
+    except Exception as initial_err:
+        logger.warning(
+            "Standard joblib.load failed (%s). Retrying with SafeNumpyUnpickler fallback...",
+            initial_err
+        )
+        try:
+            with open(ARTIFACTS_PATH, "rb") as f:
+                unpickler = _SafeNumpyUnpickler(str(ARTIFACTS_PATH), f, ensure_native_byte_order=True)
+                _artifacts_cache = unpickler.load()
+                return _artifacts_cache
+        except Exception as fallback_err:
+            import traceback
+            tb = traceback.format_exc()
+            logger.error("Failed to load artifacts with fallback unpickler: %s\n%s", fallback_err, tb)
+            return f"Error loading artifacts: {type(fallback_err).__name__}: {fallback_err}\n{tb}"
 
 
 # ── Constants (mirrored from ML prediction page) ─────────────────────────────
@@ -275,7 +314,7 @@ def create_prediction(
             prob_val = max(0.0, min(1.0, prob_val))
             
     except Exception as e:
-        print(f"Prediction error: {e}")
+        logger.warning("ML prediction inference encountered error (%s), using baseline estimates", e, exc_info=True)
         prob_val, loss_val, shelf_val = 0.384, 4.8, 5.2
 
     risk_level = "HIGH" if prob_val > 0.6 else "MEDIUM" if prob_val > 0.3 else "LOW"
@@ -308,9 +347,18 @@ def create_prediction(
         cs_lat=cs_lat,
         cs_lng=cs_lng,
     )
-    db.add(prediction)
-    db.commit()
-    db.refresh(prediction)
+    try:
+        db.add(prediction)
+        db.commit()
+        db.refresh(prediction)
+    except SQLAlchemyError as db_err:
+        db.rollback()
+        logger.error("Database error while saving prediction for user %s: %s", current_user.id, db_err, exc_info=True)
+        raise HTTPException(status_code=500, detail="Database error while saving prediction.")
+    except Exception as general_err:
+        db.rollback()
+        logger.error("Unexpected error saving prediction: %s", general_err, exc_info=True)
+        raise HTTPException(status_code=500, detail="An error occurred while saving prediction.")
 
     # Convert prediction to dict and add top_facilities and mock transcripts
     resp_data = PredictionResponse.model_validate(prediction).model_dump()

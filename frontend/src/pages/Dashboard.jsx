@@ -291,10 +291,10 @@ const Dashboard = () => {
               <select
                 value={selectedAdminWarehouseId || ''}
                 onChange={(e) => setAdminWarehouse(Number.parseInt(e.target.value, 10))}
-                className="input-field py-1 px-3 text-sm min-w-[200px] dark:bg-black/90 dark:text-white"
+                className="input-field py-1 px-3 text-sm min-w-[200px] bg-white text-gray-900 border border-gray-300 dark:bg-black/90 dark:text-white dark:border-white/10"
               >
                 {allWarehouses.map(w => (
-                  <option key={w.id} value={w.id}>{w.facility_name} ({w.district})</option>
+                  <option key={w.id} value={w.id} className="bg-white text-gray-900 dark:bg-gray-900 dark:text-white">{w.facility_name} ({w.district})</option>
                 ))}
               </select>
             </div>
@@ -343,10 +343,10 @@ const Dashboard = () => {
               {user?.role === 'farmer' && (
                 <div>
                   <label htmlFor="edit-profile-district" className="block text-sm font-medium mb-1">District</label>
-                  <select id="edit-profile-district" value={editForm.district} onChange={e => setEditForm({...editForm, district: e.target.value})} className="input-field pl-3 bg-primary/10 dark:bg-black/90 dark:text-white" required>
-                    <option value="">Select District</option>
+                  <select id="edit-profile-district" value={editForm.district} onChange={e => setEditForm({...editForm, district: e.target.value})} className="input-field pl-3 bg-white text-gray-900 border border-gray-300 dark:bg-black/90 dark:text-white dark:border-white/10" required>
+                    <option value="" className="bg-white text-gray-900 dark:bg-gray-900 dark:text-white">Select District</option>
                     {["Bagalkot", "Ballari", "Belagavi", "Bengaluru Rural", "Bengaluru Urban", "Bidar", "Chamarajanagar", "Chikkaballapur", "Chitradurga", "Dakshina Kannada", "Davangere", "Dharwad", "Gadag", "Hassan", "Haveri", "Kalaburagi", "Kodagu", "Kolar", "Koppal", "Mandya", "Mysuru", "Raichur", "Ramanagara", "Shivamogga", "Tumakuru", "Udupi", "Uttara Kannada", "Vijayanagar", "Vijayapura", "Yadgir"].map(d => (
-                      <option key={d} value={d}>{d}</option>
+                      <option key={d} value={d} className="bg-white text-gray-900 dark:bg-gray-900 dark:text-white">{d}</option>
                     ))}
                   </select>
                 </div>
@@ -478,15 +478,15 @@ const Dashboard = () => {
                 <select 
                   value={activeShipmentsFilter}
                   onChange={(e) => { setActiveShipmentsFilter(e.target.value); setActiveShipmentsPage(1); }}
-                  className="input-field py-1.5 text-sm bg-background/50 dark:bg-black/90 dark:text-white appearance-none"
+                  className="input-field py-1.5 text-sm bg-white text-gray-900 border border-gray-300 dark:bg-black/90 dark:text-white dark:border-white/10"
                   style={{ paddingLeft: '2.5rem' }}
                 >
-                  <option value="">All Statuses</option>
-                  <option value="In Transit">In Transit</option>
-                  <option value="In Storage">In Storage</option>
-                  <option value="Redirected">Redirected</option>
-                  <option value="Listed (Standard Mandi)">Listed (Standard Mandi)</option>
-                  <option value="Listed (Accelerated)">Listed (Accelerated)</option>
+                  <option value="" className="bg-white text-gray-900 dark:bg-gray-900 dark:text-white">All Statuses</option>
+                  <option value="In Transit" className="bg-white text-gray-900 dark:bg-gray-900 dark:text-white">In Transit</option>
+                  <option value="In Storage" className="bg-white text-gray-900 dark:bg-gray-900 dark:text-white">In Storage</option>
+                  <option value="Redirected" className="bg-white text-gray-900 dark:bg-gray-900 dark:text-white">Redirected</option>
+                  <option value="Listed (Standard Mandi)" className="bg-white text-gray-900 dark:bg-gray-900 dark:text-white">Listed (Standard Mandi)</option>
+                  <option value="Listed (Accelerated)" className="bg-white text-gray-900 dark:bg-gray-900 dark:text-white">Listed (Accelerated)</option>
                 </select>
               </div>
             </div>
@@ -615,13 +615,13 @@ const Dashboard = () => {
                 <select 
                   value={spoilageCropFilter}
                   onChange={(e) => setSpoilageCropFilter(e.target.value)}
-                  className="input-field py-1 px-3 text-sm min-w-[120px] bg-background/50 dark:bg-black/90 dark:text-white border border-white/10"
+                  className="input-field py-1 px-3 text-sm min-w-[120px] bg-white text-gray-900 border border-gray-300 dark:bg-black/90 dark:text-white dark:border-white/10"
                 >
-                  <option value="">All Crops</option>
-                  <option value="Tomato">Tomato</option>
-                  <option value="Onion">Onion</option>
-                  <option value="Potato">Potato</option>
-                  <option value="Cucumber">Cucumber</option>
+                  <option value="" className="bg-white text-gray-900 dark:bg-gray-900 dark:text-white">All Crops</option>
+                  <option value="Tomato" className="bg-white text-gray-900 dark:bg-gray-900 dark:text-white">Tomato</option>
+                  <option value="Onion" className="bg-white text-gray-900 dark:bg-gray-900 dark:text-white">Onion</option>
+                  <option value="Potato" className="bg-white text-gray-900 dark:bg-gray-900 dark:text-white">Potato</option>
+                  <option value="Cucumber" className="bg-white text-gray-900 dark:bg-gray-900 dark:text-white">Cucumber</option>
                 </select>
               </div>
               <GlassCard className="p-0 overflow-hidden bg-[#e8f5e9] border border-primary/30 text-green-900 shadow-md">

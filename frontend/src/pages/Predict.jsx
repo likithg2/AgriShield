@@ -640,15 +640,15 @@ const Prediction = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="predict-crop-select" className="text-xs text-text-muted font-medium mb-1 block">Select Crop</label>
-                  <select id="predict-crop-select" name="crop" value={formData.crop} onChange={handleChange} className="input-field bg-primary/5 w-full dark:bg-black/90 dark:text-white" required>
-                    <option value="">-- Select --</option>
-                    {CROP_LIST.map(c => <option key={c} value={c}>{c}</option>)}
+                  <select id="predict-crop-select" name="crop" value={formData.crop} onChange={handleChange} className="input-field bg-white text-gray-900 border border-gray-300 w-full dark:bg-black/90 dark:text-white dark:border-white/10" required>
+                    <option value="" className="bg-white text-gray-900 dark:bg-gray-900 dark:text-white">-- Select --</option>
+                    {CROP_LIST.map(c => <option key={c} value={c} className="bg-white text-gray-900 dark:bg-gray-900 dark:text-white">{c}</option>)}
                   </select>
                 </div>
                 <div>
                   <label htmlFor="predict-district-select" className="text-xs text-text-muted font-medium mb-1 block">District</label>
-                  <select id="predict-district-select" name="district" value={formData.district} onChange={handleChange} className="input-field bg-primary/5 w-full dark:bg-black/90 dark:text-white" required>
-                    {DISTRICT_LIST.map(d => <option key={d} value={d}>{d}</option>)}
+                  <select id="predict-district-select" name="district" value={formData.district} onChange={handleChange} className="input-field bg-white text-gray-900 border border-gray-300 w-full dark:bg-black/90 dark:text-white dark:border-white/10" required>
+                    {DISTRICT_LIST.map(d => <option key={d} value={d} className="bg-white text-gray-900 dark:bg-gray-900 dark:text-white">{d}</option>)}
                   </select>
                 </div>
                 <div>

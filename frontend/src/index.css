@@ -6,7 +6,7 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
   /* Colors */
   --primary: #10B981;
   --primary-hover: #059669;
@@ -218,6 +218,34 @@ body::after {
 .input-field:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15), 0 0 20px rgba(16, 185, 129, 0.08);
+}
+
+/* Dropdown Menu & Select Option Visibility: Clean White Background & Dark Text in Light Mode */
+select,
+select.input-field {
+  background-color: #ffffff;
+  color: #111827;
+  border: 1px solid #d1d5db;
+}
+
+select option,
+option {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  padding: 8px 12px;
+}
+
+.dark select,
+.dark select.input-field {
+  background-color: #042921;
+  color: #f8fafc;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.dark select option,
+.dark option {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
 }
 
 /* App Layout */
