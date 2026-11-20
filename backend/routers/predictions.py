@@ -8,6 +8,8 @@ import asyncio
 import json
 import tempfile
 import os
+import sys
+import subprocess
 from pydantic import BaseModel
 from pathlib import Path
 
@@ -564,21 +566,36 @@ async def analyze_image(file: UploadFile = File(...)):
         
         await asyncio.to_thread(_write_temp_file, temp_path, contents)
 
-        # Run the predictor using the system Python which has a working TensorFlow
-        system_python = r"C:\Users\thear\AppData\Local\Programs\Python\Python310\python.exe"
-        script_path = os.path.join(BASE_DIR, "utils", "run_predictor.py")
+        # Locate python interpreter in project virtual environment with TensorFlow installed
+        candidates = [
+            BASE_DIR / ".venv" / "Scripts" / "python.exe",
+            BASE_DIR / "venv" / "Scripts" / "python.exe",
+            BASE_DIR / ".venv" / "bin" / "python",
+            BASE_DIR / "venv" / "bin" / "python",
+            Path(sys.executable),
+        ]
+        predictor_python = str(sys.executable)
+        for candidate in candidates:
+            if candidate.exists():
+                predictor_python = str(candidate)
+                break
 
-        proc = await asyncio.create_subprocess_exec(
-            system_python, script_path, temp_path,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-        stdout_bytes, stderr_bytes = await proc.communicate()
-        stdout_str = stdout_bytes.decode(errors="replace")
-        stderr_str = stderr_bytes.decode(errors="replace")
+        script_path = str(BASE_DIR / "utils" / "run_predictor.py")
 
-        if proc.returncode != 0:
-            raise Exception(f"Subprocess failed with code {proc.returncode}: {stderr_str}")
+        def _run_subprocess():
+            return subprocess.run(
+                [predictor_python, script_path, temp_path],
+                capture_output=True,
+                text=True,
+                check=False
+            )
+
+        res = await asyncio.to_thread(_run_subprocess)
+        stdout_str = res.stdout
+        stderr_str = res.stderr
+
+        if res.returncode != 0:
+            raise Exception(f"Subprocess failed with code {res.returncode}: {stderr_str}")
 
         try:
             # Find the last line of stdout that looks like JSON in case TF spits out logs
