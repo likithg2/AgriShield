@@ -34,12 +34,9 @@ api.interceptors.response.use(
 export const authAPI = {
   login: (login_id, password) => api.post('/auth/login', { login_id, password }),
   register: (data) => api.post('/auth/register', data),
-  sendRegisterOTP: (email) => api.post('/auth/register-otp', { email }),
   getProfile: () => api.get('/auth/me'),
   updateProfile: (data) => api.put('/auth/me', data),
   deleteAccount: () => api.delete('/auth/me'),
-  sendOTP: (login_id) => api.post('/auth/send-otp', { login_id }),
-  verifyOTPLogin: (login_id, otp) => api.post('/auth/verify-otp-login', { login_id, otp }),
   forgotPassword: (login_id) => api.post('/auth/forgot-password', { login_id }),
   resetPassword: (login_id, otp, new_password) => api.post('/auth/reset-password', { login_id, otp, new_password }),
   requestEmailOTP: (new_email) => api.post('/auth/request-email-otp', { new_email }),

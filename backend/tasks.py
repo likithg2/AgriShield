@@ -4,7 +4,6 @@ import logging
 
 from backend.database import SessionLocal
 from backend.models import Shipment, ShipmentStatus, Notification, NotificationType, User, UserRole
-from backend.utils.email import send_email
 
 logger = logging.getLogger(__name__)
 
@@ -141,8 +140,7 @@ async def background_monitoring_loop():
                                     title="Emergency Auto-Dispatch",
                                     message=msg
                                 ))
-                                if manager.email:
-                                    send_email(manager.email, f"Emergency Auto-Dispatch Alert - {shipment.booking_id}", msg)
+                                # External email disabled; in-app notification above is the delivery channel.
                                 
                 except Exception as e:
                     logger.error(f"Error processing storage {shipment.id}: {e}")

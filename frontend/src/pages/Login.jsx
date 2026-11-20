@@ -9,8 +9,9 @@ import { ThemeContext } from '../context/ThemeContext';
 import { useResendTimer } from '../hooks/useResendTimer';
 
 const Login = () => {
-  const [view, setView] = useState('login'); // 'login', 'otp-request', 'otp-verify', 'forgot-password', 'reset-password'
-  
+  // Views: 'login' | 'register' | 'forgot-password' | 'reset-password'
+  const [view, setView] = useState('login');
+
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [otp, setOtp] = useState('');
@@ -23,7 +24,7 @@ const Login = () => {
   const [showNewPassword, setShowNewPassword] = useState(false);
 
   // Registration States
-  const [role, setRole] = useState('farmer'); // 'farmer' | 'warehouse_manager'
+  const [role, setRole] = useState('farmer');
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [district, setDistrict] = useState('');
@@ -37,7 +38,7 @@ const Login = () => {
         const res = await warehousesAPI.list();
         setWarehouses(res.data);
       } catch (err) {
-        console.error("Failed to load warehouses", err);
+        console.error('Failed to load warehouses', err);
       }
     };
     if (view === 'register' && role === 'warehouse_manager' && warehouses.length === 0) {
@@ -45,11 +46,10 @@ const Login = () => {
     }
   }, [view, role, warehouses.length]);
 
-  
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
-  
+
   const navigate = useNavigate();
   const { user, login } = useContext(AuthContext);
 
@@ -58,48 +58,6 @@ const Login = () => {
       navigate('/dashboard', { replace: true });
     }
   }, [user, navigate]);
-
-  
-  const handleRegisterOTPRequest = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    clearMessages();
-    try {
-      await authAPI.sendRegisterOTP(loginId); // loginId holds the email here
-      setSuccessMsg('OTP sent to ' + loginId);
-      setView('register-verify');
-      startTimer();
-    } catch (err) {
-      setError(getErrorMessage(err, 'Failed to send OTP.'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRegisterSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    clearMessages();
-    try {
-      const data = {
-        full_name: fullName,
-        phone,
-        email: loginId,
-        password,
-        role,
-        otp,
-        district: role === 'farmer' ? district : null,
-        managed_warehouse_id: role === 'warehouse_manager' ? Number.parseInt(warehouseId, 10) : null,
-      };
-      const res = await authAPI.register(data);
-      login(res.data.access_token, res.data.user);
-      navigate('/dashboard');
-    } catch (err) {
-      setError(getErrorMessage(err, 'Registration failed.'));
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const clearMessages = () => {
     setError('');
@@ -119,6 +77,7 @@ const Login = () => {
     return defaultMsg;
   };
 
+  // ── Login ──────────────────────────────────────────────────────────────────
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -134,44 +93,41 @@ const Login = () => {
     }
   };
 
-  const handleSendOTP = async (e) => {
+  // ── Register (direct — no OTP step) ───────────────────────────────────────
+  const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     clearMessages();
     try {
-      await authAPI.sendOTP(loginId);
-      setSuccessMsg('OTP sent successfully!');
-      setView('otp-verify');
-      startTimer();
-    } catch (err) {
-      setError(getErrorMessage(err, 'Failed to send OTP.'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyOTPLogin = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    clearMessages();
-    try {
-      const res = await authAPI.verifyOTPLogin(loginId, otp);
+      const data = {
+        full_name: fullName,
+        phone,
+        email: loginId,
+        password,
+        role,
+        district: role === 'farmer' ? district : null,
+        managed_warehouse_id: role === 'warehouse_manager' ? Number.parseInt(warehouseId, 10) : null,
+      };
+      const res = await authAPI.register(data);
       login(res.data.access_token, res.data.user);
       navigate('/dashboard');
     } catch (err) {
-      setError(getErrorMessage(err, 'Invalid or expired OTP.'));
+      setError(getErrorMessage(err, 'Registration failed.'));
     } finally {
       setLoading(false);
     }
   };
 
+  // ── Forgot / Reset password ────────────────────────────────────────────────
   const handleForgotPassword = async (e) => {
     e.preventDefault();
     setLoading(true);
     clearMessages();
     try {
       await authAPI.forgotPassword(loginId);
-      setSuccessMsg('Password reset code sent!');
+      setSuccessMsg(
+        'Reset code generated. Contact your administrator to retrieve it from the server logs, then enter it below.'
+      );
       setView('reset-password');
       startTimer();
     } catch (err) {
@@ -193,7 +149,7 @@ const Login = () => {
       setOtp('');
       setNewPassword('');
     } catch (err) {
-      setError(getErrorMessage(err, 'Failed to reset password. Invalid OTP.'));
+      setError(getErrorMessage(err, 'Failed to reset password. Invalid or expired code.'));
     } finally {
       setLoading(false);
     }
@@ -203,34 +159,27 @@ const Login = () => {
     <div className="flex-1 flex items-center justify-center relative min-h-[80vh]">
       <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-primary/20 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob"></div>
       <div className="absolute top-1/3 right-1/4 w-72 h-72 bg-secondary/20 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-2000"></div>
-      
+
       <GlassCard className="w-full max-w-md relative z-10 p-8 border-t border-l border-white/40 shadow-2xl backdrop-blur-xl">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 text-primary mb-4">
             <Leaf size={32} />
           </div>
-          
+
           <h1 className="text-3xl font-bold mb-2">
             {view === 'login' && 'Welcome Back'}
             {view === 'register' && 'Create an Account'}
-            {view === 'register-verify' && 'Verify Email'}
-            {view === 'otp-request' && 'Login via OTP'}
-            {view === 'otp-verify' && 'Verify OTP'}
             {view === 'forgot-password' && 'Reset Password'}
             {view === 'reset-password' && 'Create New Password'}
           </h1>
           <p className="text-text-muted">
             {view === 'login' && 'Enter your credentials to access your dashboard'}
             {view === 'register' && 'Join the Post-Harvest network'}
-            {view === 'register-verify' && `Enter the OTP sent to ${loginId}`}
-            {view === 'otp-request' && 'Enter your email or phone to receive a code'}
-            {view === 'otp-verify' && `Enter the code sent to ${loginId}`}
-            {view === 'forgot-password' && 'We will send you a reset code'}
+            {view === 'forgot-password' && 'Enter your email or phone to generate a reset code'}
             {view === 'reset-password' && 'Enter the reset code and your new password'}
           </p>
-
         </div>
-        
+
         {error && (
           <div className="mb-6 p-4 rounded-lg bg-danger/10 border border-danger/20 text-danger text-sm flex items-start gap-2">
             <span className="mt-0.5">⚠️</span>
@@ -244,12 +193,10 @@ const Login = () => {
             <span>{successMsg}</span>
           </div>
         )}
-        
-        
+
         {/* VIEW: REGISTER */}
         {view === 'register' && (
-          <form autoComplete="off" onSubmit={handleRegisterOTPRequest} className="space-y-4">
-            
+          <form autoComplete="off" onSubmit={handleRegisterSubmit} className="space-y-4">
             <div className="flex gap-2 mb-4 p-1 bg-white/20 dark:bg-black/20 rounded-lg">
               <button type="button" onClick={() => setRole('farmer')} className={`flex-1 py-2 text-sm font-semibold rounded-md transition-colors ${role === 'farmer' ? 'bg-primary text-white shadow-md' : 'text-text-muted hover:text-text-main'}`}>Farmer</button>
               <button type="button" onClick={() => setRole('warehouse_manager')} className={`flex-1 py-2 text-sm font-semibold rounded-md transition-colors ${role === 'warehouse_manager' ? 'bg-secondary text-white shadow-md' : 'text-text-muted hover:text-text-main'}`}>Warehouse Mgr</button>
@@ -270,11 +217,11 @@ const Login = () => {
               <label htmlFor="reg-email" className="text-xs font-medium ml-1">Email</label>
               <input id="reg-email" type="email" value={loginId} autoComplete="off" onChange={e => setLoginId(e.target.value)} className="input-field pl-3 bg-primary/10 dark:bg-primary/20" required />
             </div>
-            
+
             <div className="space-y-1">
               <label htmlFor="reg-password" className="text-xs font-medium ml-1">Password</label>
               <div className="relative">
-                <input id="reg-password" type={showPassword ? "text" : "password"} autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} className="input-field pl-3 pr-10 bg-primary/10 dark:bg-primary/20" required minLength="6" title="Password must be at least 6 characters long" />
+                <input id="reg-password" type={showPassword ? 'text' : 'password'} autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} className="input-field pl-3 pr-10 bg-primary/10 dark:bg-primary/20" required minLength="6" title="Password must be at least 6 characters long" />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-main" tabIndex="-1">
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -307,49 +254,13 @@ const Login = () => {
             )}
 
             <Button type="submit" className="w-full justify-center mt-2 py-3 shadow-lg shadow-primary/30" disabled={loading}>
-              {loading ? 'Sending OTP...' : 'Send OTP to Email'}
+              {loading ? 'Creating Account...' : 'Create Account'}
+              {!loading && <ArrowRight size={20} />}
             </Button>
-            
+
             <div className="text-center pt-2">
               <button type="button" onClick={() => { setView('login'); clearMessages(); }} className="text-sm text-text-muted hover:text-primary transition-colors">
                 Already have an account? Login
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* VIEW: REGISTER VERIFY */}
-        {view === 'register-verify' && (
-          <form autoComplete="off" onSubmit={handleRegisterSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <label htmlFor="reg-verify-otp" className="text-sm font-medium ml-1">6-Digit OTP</label>
-              <div className="relative">
-                <input 
-                  id="reg-verify-otp"
-                  type={showOtp ? "text" : "password"}
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  className={`input-field pl-4 pr-10 bg-primary/10 dark:bg-primary/20 tracking-widest`}
-                  maxLength="6"
-                  required
-                />
-                <button type="button" onClick={() => setShowOtp(!showOtp)} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-main" tabIndex="-1">
-                  {showOtp ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-            
-            <Button type="submit" className="w-full justify-center mt-4 py-3 text-lg font-semibold shadow-lg shadow-primary/30" disabled={loading}>
-              {loading ? 'Creating Account...' : 'Verify & Create Account'}
-              {!loading && <ArrowRight size={20} />}
-            </Button>
-            
-            <div className="flex flex-col gap-2 text-center pt-2 mt-4">
-              <button type="button" onClick={handleRegisterOTPRequest} disabled={isTimerActive || loading} className="text-sm text-primary font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:underline">
-                {isTimerActive ? `Resend OTP in ${formattedTime()}` : 'Resend OTP'}
-              </button>
-              <button type="button" onClick={() => { setView('register'); clearMessages(); setOtp(''); }} className="text-sm text-text-muted hover:text-primary transition-colors mt-2">
-                Back to Registration
               </button>
             </div>
           </form>
@@ -366,9 +277,9 @@ const Login = () => {
                     <Mail size={18} />
                   </div>
                 )}
-                <input 
+                <input
                   id="login-id"
-                  type="text" 
+                  type="text"
                   value={loginId} autoComplete="off"
                   onChange={(e) => setLoginId(e.target.value)}
                   className={`input-field ${loginId ? 'pl-4' : 'pl-10'} bg-primary/10 dark:bg-primary/20`}
@@ -376,7 +287,7 @@ const Login = () => {
                 />
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <div className="flex justify-between items-center ml-1">
                 <label htmlFor="login-password" className="text-sm font-medium">Password</label>
@@ -390,9 +301,9 @@ const Login = () => {
                     <Lock size={18} />
                   </div>
                 )}
-                <input 
+                <input
                   id="login-password"
-                  type={showPassword ? "text" : "password"} autoComplete="new-password"
+                  type={showPassword ? 'text' : 'password'} autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className={`input-field ${password ? 'pl-4' : 'pl-10'} pr-10 bg-primary/10 dark:bg-primary/20`}
@@ -403,104 +314,18 @@ const Login = () => {
                 </button>
               </div>
             </div>
-            
-            <Button 
-              type="submit" 
+
+            <Button
+              type="submit"
               className="w-full justify-center mt-4 py-3 text-lg font-semibold shadow-lg shadow-primary/30"
               disabled={loading}
             >
               {loading ? 'Authenticating...' : 'Sign In'}
               {!loading && <ArrowRight size={20} />}
             </Button>
-            <div className="text-center pt-2 flex flex-col gap-2">
-              <button type="button" onClick={() => { setView('otp-request'); clearMessages(); }} className="text-sm text-text-muted hover:text-primary transition-colors">
-                Or login with OTP instead
-              </button>
+            <div className="text-center pt-2">
               <button type="button" onClick={() => { setView('register'); clearMessages(); }} className="text-sm font-semibold text-primary hover:underline">
                 Don't have an account? Register
-              </button>
-            </div>
-          </form>        )}
-
-        {/* VIEW: OTP REQUEST */}
-        {view === 'otp-request' && (
-          <form autoComplete="off" onSubmit={handleSendOTP} className="space-y-6">
-            <div className="space-y-2">
-              <label htmlFor="otp-req-id" className="text-sm font-medium ml-1">Email or Phone</label>
-              <div className="relative">
-                {!loginId && (
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-text-muted">
-                    <Mail size={18} />
-                  </div>
-                )}
-                <input 
-                  id="otp-req-id"
-                  type="text" 
-                  value={loginId} autoComplete="off"
-                  onChange={(e) => setLoginId(e.target.value)}
-                  className={`input-field ${loginId ? 'pl-4' : 'pl-10'} bg-primary/10 dark:bg-primary/20`}
-                  required
-                />
-              </div>
-            </div>
-            
-            <Button 
-              type="submit" 
-              className="w-full justify-center mt-4 py-3 text-lg font-semibold shadow-lg shadow-primary/30"
-              disabled={loading}
-            >
-              {loading ? 'Sending...' : 'Send OTP'}
-            </Button>
-            
-            <div className="text-center pt-2">
-              <button type="button" onClick={() => { setView('login'); clearMessages(); }} className="text-sm text-text-muted hover:text-primary transition-colors">
-                Back to Password Login
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* VIEW: OTP VERIFY */}
-        {view === 'otp-verify' && (
-          <form autoComplete="off" onSubmit={handleVerifyOTPLogin} className="space-y-6">
-            <div className="space-y-2">
-              <label htmlFor="otp-verify-code" className="text-sm font-medium ml-1">6-Digit OTP</label>
-              <div className="relative">
-                {!otp && (
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-text-muted">
-                    <KeyRound size={18} />
-                  </div>
-                )}
-                <input 
-                  id="otp-verify-code"
-                  type={showOtp ? "text" : "password"} 
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  className={`input-field ${otp ? 'pl-4' : 'pl-10'} pr-10 bg-primary/10 dark:bg-primary/20 tracking-widest`}
-                  maxLength="6"
-                  required
-                />
-                <button type="button" onClick={() => setShowOtp(!showOtp)} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-main" tabIndex="-1">
-                  {showOtp ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-            
-            <Button 
-              type="submit" 
-              className="w-full justify-center mt-4 py-3 text-lg font-semibold shadow-lg shadow-primary/30"
-              disabled={loading}
-            >
-              {loading ? 'Verifying...' : 'Verify & Login'}
-              {!loading && <ArrowRight size={20} />}
-            </Button>
-            
-            <div className="flex flex-col gap-2 text-center pt-2 mt-4">
-              <button type="button" onClick={handleSendOTP} disabled={isTimerActive || loading} className="text-sm text-primary font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:underline">
-                {isTimerActive ? `Resend OTP in ${formattedTime()}` : 'Resend OTP'}
-              </button>
-              <button type="button" onClick={() => { setView('otp-request'); clearMessages(); setOtp(''); }} className="text-sm text-text-muted hover:text-primary transition-colors mt-2">
-                Use a different email/phone?
               </button>
             </div>
           </form>
@@ -517,9 +342,9 @@ const Login = () => {
                     <Mail size={18} />
                   </div>
                 )}
-                <input 
+                <input
                   id="forgot-pwd-id"
-                  type="text" 
+                  type="text"
                   value={loginId} autoComplete="off"
                   onChange={(e) => setLoginId(e.target.value)}
                   className={`input-field ${loginId ? 'pl-4' : 'pl-10'} bg-primary/10 dark:bg-primary/20`}
@@ -527,15 +352,15 @@ const Login = () => {
                 />
               </div>
             </div>
-            
-            <Button 
-              type="submit" 
+
+            <Button
+              type="submit"
               className="w-full justify-center mt-4 py-3 text-lg font-semibold shadow-lg shadow-primary/30"
               disabled={loading}
             >
-              {loading ? 'Sending...' : 'Send Reset Code'}
+              {loading ? 'Generating...' : 'Generate Reset Code'}
             </Button>
-            
+
             <div className="text-center pt-2">
               <button type="button" onClick={() => { setView('login'); clearMessages(); }} className="text-sm text-text-muted hover:text-primary transition-colors">
                 Back to Login
@@ -548,16 +373,16 @@ const Login = () => {
         {view === 'reset-password' && (
           <form autoComplete="off" onSubmit={handleResetPassword} className="space-y-6">
             <div className="space-y-2">
-              <label htmlFor="reset-pwd-otp" className="text-sm font-medium ml-1">Reset Code (OTP)</label>
+              <label htmlFor="reset-pwd-otp" className="text-sm font-medium ml-1">Reset Code</label>
               <div className="relative">
                 {!otp && (
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-text-muted">
                     <KeyRound size={18} />
                   </div>
                 )}
-                <input 
+                <input
                   id="reset-pwd-otp"
-                  type={showOtp ? "text" : "password"} 
+                  type={showOtp ? 'text' : 'password'}
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
                   className={`input-field ${otp ? 'pl-4' : 'pl-10'} pr-10 bg-primary/10 dark:bg-primary/20 tracking-widest`}
@@ -569,7 +394,7 @@ const Login = () => {
                 </button>
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <label htmlFor="reset-pwd-new" className="text-sm font-medium ml-1">New Password</label>
               <div className="relative">
@@ -578,28 +403,29 @@ const Login = () => {
                     <Lock size={18} />
                   </div>
                 )}
-                <input 
+                <input
                   id="reset-pwd-new"
-                  type={showNewPassword ? "text" : "password"} 
+                  type={showNewPassword ? 'text' : 'password'}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   className={`input-field ${newPassword ? 'pl-4' : 'pl-10'} pr-10 bg-primary/10 dark:bg-primary/20`}
                   required
+                  minLength="6"
                 />
                 <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-main" tabIndex="-1">
                   {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
             </div>
-            
-            <Button 
-              type="submit" 
+
+            <Button
+              type="submit"
               className="w-full justify-center mt-4 py-3 text-lg font-semibold shadow-lg shadow-primary/30"
               disabled={loading}
             >
               {loading ? 'Updating...' : 'Update Password'}
             </Button>
-            
+
             <div className="flex flex-col gap-2 text-center pt-2 mt-4">
               <button type="button" onClick={handleForgotPassword} disabled={isTimerActive || loading} className="text-sm text-primary font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:underline">
                 {isTimerActive ? `Resend Reset Code in ${formattedTime()}` : 'Resend Reset Code'}
@@ -610,7 +436,7 @@ const Login = () => {
             </div>
           </form>
         )}
-        
+
         {view === 'login' && (
           <div className="mt-8 text-center text-sm text-text-muted">
             <p>Demo Credentials:</p>

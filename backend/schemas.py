@@ -19,7 +19,6 @@ class UserCreate(BaseModel):
     role: str = Field(default="farmer", pattern="^(farmer|warehouse_manager|admin)$")
     district: Optional[str] = None
     managed_warehouse_id: Optional[int] = None
-    otp: str = Field(..., min_length=6, max_length=6)
 
 
 class UserLogin(BaseModel):

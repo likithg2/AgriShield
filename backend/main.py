@@ -44,6 +44,17 @@ background_tasks_set = set()
 
 @app.on_event("startup")
 async def startup_event():
+    # Idempotently seed demo users (skips existing accounts)
+    try:
+        from backend.seed_data import seed_default_users
+        db = SessionLocal()
+        try:
+            seed_default_users(db)
+        finally:
+            db.close()
+    except Exception as exc:
+        logger.warning("Demo user seeding failed (non-fatal): %s", exc)
+
     task = asyncio.create_task(background_monitoring_loop())
     background_tasks_set.add(task)
     task.add_done_callback(background_tasks_set.discard)
