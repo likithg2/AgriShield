@@ -1,39 +1,28 @@
+"""
+quality_predictor.py — Vegetable Quality and Freshness Classifier
+Loads the trained MobileNetV2 model using ONNX Runtime for ultra-low memory
+consumption (~40 MB vs ~390 MB with TensorFlow) on constrained hosting tiers.
+Includes an automatic fallback to TensorFlow Keras if ONNX model is unavailable.
+"""
+
 import os
+import sys
 import numpy as np
 from PIL import Image
 
-# Robust Keras import: try tf.keras (TF 2.x built-in), then tf_keras shim, then standalone keras
-try:
-    import tensorflow as tf
-    from tensorflow.keras.models import load_model
-    from tensorflow.keras.layers import Dense
-    _keras_source = "tensorflow.keras"
-except (ImportError, AttributeError):
-    try:
-        import tf_keras
-        from tf_keras.models import load_model
-        from tf_keras.layers import Dense
-        _keras_source = "tf_keras"
-    except ImportError:
-        from keras.models import load_model
-        from keras.layers import Dense
-        _keras_source = "keras"
-
-# Monkey-patch Dense.from_config to strip quantization_config (Keras 2 artifact)
-original_from_config = Dense.from_config
-@classmethod
-def custom_from_config(cls, config):
-    config.pop('quantization_config', None)
-    return original_from_config.__get__(None, cls)(config)
-Dense.from_config = custom_from_config
-
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-model_path = os.path.join(BASE_DIR, "models", "vegetable_quality_v5_model.keras")
-model = load_model(model_path, compile=False)
 
+# Candidate paths for model files
+ONNX_PATHS = [
+    os.path.join(BASE_DIR, "models", "vegetable_quality_v5_model.onnx"),
+    os.path.join(BASE_DIR, "vegetable_quality_v5_model.onnx"),
+]
 
-# Keras models do not store string labels. If the model outputs 8 classes, we define 8 temporary labels.
-# The user can update these 8 labels to match the exact crops they trained on.
+KERAS_PATHS = [
+    os.path.join(BASE_DIR, "models", "vegetable_quality_v5_model.keras"),
+    os.path.join(BASE_DIR, "vegetable_quality_v5_model.keras"),
+]
+
 class_names_8 = [
     'freshcucumber', 'freshonion', 'freshpotato', 'freshtomato',
     'rottencucumber', 'rottenonion', 'rottenpotato', 'rottentomato'
@@ -46,31 +35,102 @@ class_names_20 = [
 
 IMG_SIZE = (224, 224)
 
+# Global lazy cache for the loaded model session
+_cached_session = None
+_session_type = None  # "onnx" or "keras"
+_input_name = None
+_output_name = None
+
+
+def _init_model():
+    """Lazily initialize and cache the model on first inference request."""
+    global _cached_session, _session_type, _input_name, _output_name
+
+    if _cached_session is not None:
+        return _cached_session, _session_type
+
+    # 1. Primary path: ONNX Runtime
+    onnx_file = next((p for p in ONNX_PATHS if os.path.isfile(p)), None)
+    if onnx_file:
+        try:
+            import onnxruntime as ort
+            # Configure single-thread inference to keep CPU and memory footprint minimal
+            opts = ort.SessionOptions()
+            opts.intra_op_num_threads = 1
+            opts.inter_op_num_threads = 1
+            opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+            session = ort.InferenceSession(onnx_file, sess_options=opts, providers=['CPUExecutionProvider'])
+            _input_name = session.get_inputs()[0].name
+            _output_name = session.get_outputs()[0].name
+            _cached_session = session
+            _session_type = "onnx"
+            return _cached_session, _session_type
+        except Exception as exc:
+            import logging
+            logging.warning(f"Failed to initialize ONNX Runtime session: {exc}. Falling back to TensorFlow.")
+
+    # 2. Fallback path: TensorFlow Keras
+    keras_file = next((p for p in KERAS_PATHS if os.path.isfile(p)), None)
+    if keras_file:
+        try:
+            try:
+                import tensorflow as tf
+                from tensorflow.keras.models import load_model
+                from tensorflow.keras.layers import Dense
+            except (ImportError, AttributeError):
+                from keras.models import load_model
+                from keras.layers import Dense
+
+            # Monkey-patch Dense.from_config to strip quantization_config (Keras 2 artifact)
+            original_from_config = Dense.from_config
+            @classmethod
+            def custom_from_config(cls, config):
+                config.pop('quantization_config', None)
+                return original_from_config.__get__(None, cls)(config)
+            Dense.from_config = custom_from_config
+
+            _cached_session = load_model(keras_file, compile=False)
+            _session_type = "keras"
+            return _cached_session, _session_type
+        except Exception as exc:
+            raise RuntimeError(f"Could not load either ONNX or Keras quality model: {exc}")
+
+    raise FileNotFoundError("Quality predictor model file not found in models/ or project root.")
+
+
 def predict_quality(uploaded_file):
+    """
+    Predict crop quality from an image file or stream.
+    Returns: (crop, quality, confidence, fresh_pct, rotten_pct)
+    """
+    model_session, session_type = _init_model()
+
     # Read image
     img = Image.open(uploaded_file).convert("RGB")
     img = img.resize(IMG_SIZE)
 
-    # Convert to NumPy
+    # Convert to NumPy array
     img_array = np.array(img, dtype=np.float32)
 
     # Add batch dimension
     img_array = np.expand_dims(img_array, axis=0)
 
-    # Predict
-    prediction = model.predict(img_array, verbose=0)
-    
-    predicted_index = np.argmax(prediction)
-    
+    # Execute inference
+    if session_type == "onnx":
+        prediction = model_session.run([_output_name], {_input_name: img_array})[0]
+    else:
+        prediction = model_session.predict(img_array, verbose=0)
+
+    predicted_index = int(np.argmax(prediction))
+
     # Choose the correct label list based on model output size
     num_classes = prediction.shape[1]
     if num_classes == 8:
         class_list = class_names_8
     else:
         class_list = class_names_20
-        
-    predicted_class = class_list[predicted_index]
 
+    predicted_class = class_list[predicted_index]
     confidence = float(prediction[0][predicted_index] * 100)
 
     # Separate quality and crop
@@ -86,7 +146,7 @@ def predict_quality(uploaded_file):
     # Calculate both fresh and rotten percentages for this specific crop
     fresh_class_name = f"fresh{crop.lower()}"
     rotten_class_name = f"rotten{crop.lower()}"
-    
+
     try:
         fresh_idx = class_list.index(fresh_class_name)
         rotten_idx = class_list.index(rotten_class_name)

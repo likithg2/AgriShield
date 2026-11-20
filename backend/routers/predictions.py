@@ -561,44 +561,61 @@ async def analyze_image(file: UploadFile = File(...)):
     temp_path = None
     try:
         contents = await file.read()
+        if not contents or len(contents) == 0:
+            raise HTTPException(status_code=400, detail="Uploaded image file is empty.")
+
         fd, temp_path = tempfile.mkstemp(suffix=".jpg")
         os.close(fd)
         
         await asyncio.to_thread(_write_temp_file, temp_path, contents)
 
-        # Locate python interpreter in project virtual environment with TensorFlow installed
-        candidates = [
-            BASE_DIR / ".venv" / "Scripts" / "python.exe",
-            BASE_DIR / "venv" / "Scripts" / "python.exe",
-            BASE_DIR / ".venv" / "bin" / "python",
-            BASE_DIR / "venv" / "bin" / "python",
-            Path(sys.executable),
-        ]
-        predictor_python = str(sys.executable)
-        for candidate in candidates:
-            if candidate.exists():
-                predictor_python = str(candidate)
-                break
-
-        script_path = str(BASE_DIR / "utils" / "run_predictor.py")
-
-        def _run_subprocess():
-            return subprocess.run(
-                [predictor_python, script_path, temp_path],
-                capture_output=True,
-                text=True,
-                check=False
-            )
-
-        res = await asyncio.to_thread(_run_subprocess)
-        stdout_str = res.stdout
-        stderr_str = res.stderr
-
-        if res.returncode != 0:
-            raise Exception(f"Subprocess failed with code {res.returncode}: {stderr_str}")
-
+        # 1. Primary path: In-process inference using ONNX Runtime (low memory, high speed)
         try:
-            # Find the last line of stdout that looks like JSON in case TF spits out logs
+            from utils.quality_predictor import predict_quality
+            def _run_in_process():
+                with open(temp_path, "rb") as f:
+                    return predict_quality(f)
+            crop_name, quality, confidence, fresh_pct, rotten_pct = await asyncio.to_thread(_run_in_process)
+            return {
+                "crop_name": crop_name,
+                "quality": quality,
+                "confidence": confidence,
+                "fresh_pct": fresh_pct,
+                "rotten_pct": rotten_pct
+            }
+        except Exception as in_proc_err:
+            # 2. Fallback path: Process-isolated execution via run_predictor.py
+            candidates = [
+                Path(sys.executable),
+                BASE_DIR / ".venv" / "Scripts" / "python.exe",
+                BASE_DIR / "venv" / "Scripts" / "python.exe",
+                BASE_DIR / ".venv" / "bin" / "python",
+                BASE_DIR / "venv" / "bin" / "python",
+            ]
+            predictor_python = str(sys.executable)
+            for candidate in candidates:
+                if candidate.exists():
+                    predictor_python = str(candidate)
+                    break
+
+            script_path = str(BASE_DIR / "utils" / "run_predictor.py")
+
+            def _run_subprocess():
+                return subprocess.run(
+                    [predictor_python, script_path, temp_path],
+                    capture_output=True,
+                    text=True,
+                    check=False
+                )
+
+            res = await asyncio.to_thread(_run_subprocess)
+            stdout_str = res.stdout
+            stderr_str = res.stderr
+
+            if res.returncode != 0:
+                raise Exception(f"Inference failed (in-proc: {in_proc_err}, subproc code {res.returncode}): {stderr_str}")
+
+            # Find the last line of stdout that looks like JSON
             lines = [line.strip() for line in stdout_str.split('\n') if line.strip()]
             json_str = None
             for line in reversed(lines):
@@ -614,14 +631,17 @@ async def analyze_image(file: UploadFile = File(...)):
                 raise Exception(data["error"])
 
             return data
-        except json.JSONDecodeError:
-            raise Exception(f"Failed to parse JSON output: {stdout_str}")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Image analysis failed: {str(e)}")
     finally:
         # Clean up temp file
         if temp_path and os.path.exists(temp_path):
-            os.remove(temp_path)
+            try:
+                os.remove(temp_path)
+            except OSError:
+                pass
 
 @router.post("/voice-parse")
 async def parse_voice(file: UploadFile = File(...)):
