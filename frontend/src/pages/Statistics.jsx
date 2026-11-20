@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { LanguageContext } from '../context/LanguageContext';
 import { ThemeContext } from '../context/ThemeContext';
 import { aiAPI, predictionsAPI } from '../utils/api';
 import GlassCard from '../components/GlassCard';
-import { Cloud, TrendingUp, Loader, Volume2, LineChart, BarChart2 } from 'lucide-react';
+import { Cloud, TrendingUp, Loader, Volume2, LineChart, BarChart2, Square } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import toast from 'react-hot-toast';
 import { LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -29,6 +29,7 @@ const Statistics = () => {
   // Voice & Language state
   const appLanguage = language ? language.toLowerCase() : 'en';
   const [playingAudioIdx, setPlayingAudioIdx] = useState(null);
+  const currentAudioRef = useRef(null);
   
   // Suggestions state
   const [suggestions, setSuggestions] = useState(null);
@@ -97,17 +98,40 @@ const Statistics = () => {
     }
   };
 
+  const stopTTS = () => {
+    if (currentAudioRef.current) {
+      try {
+        currentAudioRef.current.pause();
+        currentAudioRef.current.currentTime = 0;
+      } catch (e) {}
+      currentAudioRef.current = null;
+    }
+    setPlayingAudioIdx(null);
+    toast.dismiss("tts");
+    toast("Audio stopped", { icon: "⏹️" });
+  };
+
   const playTTS = async (text, idx) => {
-    if (playingAudioIdx !== null) return;
+    if (playingAudioIdx !== null) {
+      stopTTS();
+      return;
+    }
     setPlayingAudioIdx(idx);
     toast.loading("Generating audio...", { id: "tts" });
     try {
       const res = await predictionsAPI.getAdvisoryAudio({ text, lang: appLanguage });
       const audioUrl = URL.createObjectURL(res.data);
       const audio = new Audio(audioUrl);
+      currentAudioRef.current = audio;
       
       audio.onended = () => {
         setPlayingAudioIdx(null);
+        currentAudioRef.current = null;
+      };
+
+      audio.onerror = () => {
+        setPlayingAudioIdx(null);
+        currentAudioRef.current = null;
       };
       
       void audio.play().catch(console.error);
@@ -116,8 +140,20 @@ const Statistics = () => {
       console.error(err);
       toast.error("Failed to generate audio", { id: "tts" });
       setPlayingAudioIdx(null);
+      currentAudioRef.current = null;
     }
   };
+
+  // Cleanup audio playback on component unmount
+  useEffect(() => {
+    return () => {
+      if (currentAudioRef.current) {
+        try {
+          currentAudioRef.current.pause();
+        } catch (e) {}
+      }
+    };
+  }, []);
 
   // --- Analytics Charts Data Prep ---
   let spx = [], spy = [];
@@ -161,12 +197,26 @@ const Statistics = () => {
             </h2>
             {suggestions && !loadingSuggestions && (
               <button 
-                onClick={() => playTTS(suggestions, 'suggestions')}
-                disabled={playingAudioIdx !== null}
-                className="p-1.5 rounded-full bg-black/40 text-text-muted hover:text-white transition-colors"
-                title="Listen to suggestions"
+                type="button"
+                onClick={() => playingAudioIdx === 'suggestions' ? stopTTS() : playTTS(suggestions, 'suggestions')}
+                className={`px-3 py-1.5 rounded-full border transition-all flex items-center gap-1.5 text-xs font-semibold ${
+                  playingAudioIdx === 'suggestions'
+                    ? 'bg-red-500/15 border-red-500/40 text-red-500 hover:bg-red-500/25'
+                    : 'bg-black/20 dark:bg-white/10 border-glass-border text-text-muted hover:text-primary hover:border-primary/40'
+                }`}
+                title={playingAudioIdx === 'suggestions' ? "Stop Audio" : "Listen to suggestions"}
               >
-                {playingAudioIdx === 'suggestions' ? <Loader className="animate-spin" size={16} /> : <Volume2 size={16} />}
+                {playingAudioIdx === 'suggestions' ? (
+                  <>
+                    <Square size={13} className="fill-current text-red-500 animate-pulse" />
+                    <span>Stop Audio</span>
+                  </>
+                ) : (
+                  <>
+                    <Volume2 size={15} />
+                    <span>Listen</span>
+                  </>
+                )}
               </button>
             )}
           </div>

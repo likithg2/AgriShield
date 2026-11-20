@@ -1,6 +1,7 @@
 import React, { useContext, useState, useRef, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { Leaf, LayoutDashboard, Calculator, Building2, User, History, LogIn, Moon, Sun, Globe, TrendingUp, Trash2, Bell, AlertTriangle, Menu, X, Check } from 'lucide-react';
+import { Leaf, LayoutDashboard, Calculator, Building2, User, History, LogIn, Moon, Sun, Globe, TrendingUp, Trash2, Bell, AlertTriangle, Menu, X, Check, Edit2 } from 'lucide-react';
+import EditProfileModal from './EditProfileModal';
 import { ThemeContext } from '../context/ThemeContext';
 import { LanguageContext } from '../context/LanguageContext';
 import { AuthContext } from '../context/AuthContext';
@@ -18,6 +19,7 @@ const TopBar = () => {
   const unreadNotifications = notifications.filter(n => !n.is_read);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const notifRef = useRef(null);
   const location = useLocation();
@@ -38,6 +40,23 @@ const TopBar = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Hide full navbar on root / (https://agrishield-app.vercel.app/) and /login,
+  // showing only the theme toggle icon as requested.
+  if (location.pathname === '/' || location.pathname === '/login') {
+    return (
+      <div className="fixed top-4 right-4 z-50">
+        <button
+          onClick={toggleTheme}
+          className="p-3 rounded-full bg-white/80 dark:bg-black/50 border border-gray-200 dark:border-white/10 shadow-lg text-text-main hover:bg-primary/20 hover:border-primary/40 transition-all backdrop-blur-md flex items-center justify-center cursor-pointer"
+          title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+          aria-label="Toggle theme"
+        >
+          {isDark ? <Sun size={20} className="text-yellow-400" /> : <Moon size={20} className="text-gray-700" />}
+        </button>
+      </div>
+    );
+  }
 
   if (!user) return null;
 
@@ -69,11 +88,15 @@ const TopBar = () => {
     <>
     <nav className="glass-panel glass-navbar mx-3 sm:mx-4 md:mx-6 mt-2 sm:mt-3 md:mt-4 px-3 sm:px-4 md:px-6 py-2.5 sm:py-3.5 sticky top-2 sm:top-4 z-50">
       <div className="flex items-center justify-between">
-        {/* Brand Logo */}
-        <NavLink to="/dashboard" className="flex items-center gap-2 text-primary font-bold text-lg sm:text-xl tracking-tight">
+        {/* Brand Logo - Navigates to https://agrishield-app.vercel.app/ */}
+        <a 
+          href="https://agrishield-app.vercel.app/" 
+          className="flex items-center gap-2 text-primary font-bold text-lg sm:text-xl tracking-tight hover:opacity-90 transition-opacity"
+          title="AgriShield Home"
+        >
           <Leaf size={22} className="shrink-0" />
           <span>AgriShield</span>
-        </NavLink>
+        </a>
         
         {/* Desktop Navigation Links */}
         <div className="hidden lg:flex items-center gap-5 xl:gap-6">
@@ -217,10 +240,18 @@ const TopBar = () => {
             )}
           </div>
 
-          <div className="flex flex-col text-right ml-1">
-            <span className="font-semibold text-sm truncate max-w-[140px]">{user.full_name}</span>
+          <button 
+            type="button"
+            onClick={() => setShowEditProfile(true)}
+            className="flex flex-col text-right ml-1 cursor-pointer group text-left focus:outline-none"
+            title="Edit Profile"
+          >
+            <span className="font-semibold text-sm truncate max-w-[140px] text-text-main group-hover:text-primary transition-colors flex items-center justify-end gap-1">
+              {user.full_name}
+              <Edit2 size={12} className="opacity-60 group-hover:opacity-100 transition-opacity text-primary shrink-0" />
+            </span>
             <span className="text-[10px] text-text-muted uppercase font-bold tracking-wider">{user.role}</span>
-          </div>
+          </button>
 
           <Button 
             variant="secondary" 
@@ -369,15 +400,26 @@ const TopBar = () => {
           >
             {/* User Profile Card Mobile */}
             <div className="p-3 mb-3 rounded-xl bg-white/40 dark:bg-black/30 border border-glass-border flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  setShowEditProfile(true);
+                }}
+                className="flex items-center gap-2.5 hover:opacity-80 transition-opacity text-left cursor-pointer"
+                title="Edit Profile"
+              >
                 <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-sm">
                   {user.full_name?.charAt(0).toUpperCase() || 'U'}
                 </div>
                 <div>
-                  <div className="font-semibold text-sm leading-tight">{user.full_name}</div>
+                  <div className="font-semibold text-sm leading-tight flex items-center gap-1">
+                    <span>{user.full_name}</span>
+                    <Edit2 size={11} className="text-primary" />
+                  </div>
                   <div className="text-[10px] text-text-muted uppercase font-bold tracking-wider">{user.role}</div>
                 </div>
-              </div>
+              </button>
               <div className="flex items-center gap-1.5 bg-white/70 dark:bg-black/50 border border-gray-200 dark:border-white/10 rounded-lg px-2 py-1">
                 <Globe size={13} className="text-gray-500" />
                 <select 
@@ -463,6 +505,8 @@ const TopBar = () => {
         </motion.div>
       )}
     </AnimatePresence>
+    {/* Edit Profile Modal */}
+    <EditProfileModal isOpen={showEditProfile} onClose={() => setShowEditProfile(false)} />
     </>
   );
 };
