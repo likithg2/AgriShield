@@ -13,6 +13,18 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
+# Ensure Cython internal loss module is mapped to sys.modules['_loss'] so that
+# unpickling artifacts_v2.pkl succeeds across Linux (Render) and different scikit-learn versions
+try:
+    import sklearn._loss._loss as _cy_loss
+    sys.modules["_loss"] = _cy_loss
+except (ImportError, AttributeError):
+    try:
+        import sklearn._loss as _sk_loss
+        sys.modules["_loss"] = _sk_loss
+    except ImportError:
+        pass
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -44,6 +56,17 @@ background_tasks_set = set()
 
 @app.on_event("startup")
 async def startup_event():
+    # Pre-warm ML model artifacts on startup so first user request is instant
+    try:
+        from backend.routers.predictions import _load_artifacts
+        artifacts = _load_artifacts()
+        if isinstance(artifacts, dict):
+            logger.info("ML model artifacts successfully pre-loaded on startup.")
+        else:
+            logger.warning("ML model artifacts pre-loading status: %s", artifacts)
+    except Exception as exc:
+        logger.error("ML model artifacts pre-loading failed on startup: %s", exc, exc_info=True)
+
     # Idempotently seed demo users (skips existing accounts)
     try:
         from backend.seed_data import seed_default_users
