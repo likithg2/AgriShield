@@ -107,6 +107,12 @@ const Login = () => {
   };
 
   const getErrorMessage = (err, defaultMsg) => {
+    if (!err.response) {
+      return 'Unable to connect to the backend server. Please verify the backend is running.';
+    }
+    if (err.response.status >= 500) {
+      return 'Server error occurred. Please try again.';
+    }
     const detail = err.response?.data?.detail;
     if (typeof detail === 'string') return detail;
     if (Array.isArray(detail)) return detail.map(d => d.msg).join(', ');

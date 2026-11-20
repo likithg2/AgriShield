@@ -4,17 +4,21 @@ Uses environment variables with sensible defaults for local development.
 """
 
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv()
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+ROOT_DIR = Path(__file__).resolve().parent.parent
+DEFAULT_DB_PATH = ROOT_DIR / "postharvest.db"
 
 
 class Settings(BaseSettings):
     # ── Database ──────────────────────────────────────────────────────────────
     # Default: SQLite (zero setup, works immediately)
     # For production: set DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postharvest_db
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./postharvest.db")
+    DATABASE_URL: str = os.getenv("DATABASE_URL", f"sqlite:///{DEFAULT_DB_PATH.as_posix()}")
 
     # ── JWT Authentication ────────────────────────────────────────────────────
     SECRET_KEY: str = os.getenv("SECRET_KEY", "bit-major-project-2023-27-super-secret-key-change-in-production")
