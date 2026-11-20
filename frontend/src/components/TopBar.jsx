@@ -56,7 +56,7 @@ const TopBar = () => {
 
   return (
     <>
-    <nav className="glass-panel mx-6 mt-4 px-6 py-4 flex items-center justify-between sticky top-4 z-50">
+    <nav className="glass-panel glass-navbar mx-6 mt-4 px-6 py-4 flex items-center justify-between sticky top-4 z-50">
       <div className="flex items-center gap-2 text-primary font-bold text-xl">
         <Leaf size={24} />
         <span>AgriShield</span>
@@ -80,7 +80,7 @@ const TopBar = () => {
       <div className="flex items-center gap-4">
         {user && (
           <>
-            <div className="flex items-center gap-2 bg-white/30 dark:bg-black/20 rounded-full px-2 py-1">
+            <div className="flex items-center gap-2 bg-white/50 dark:bg-black/30 border border-white/40 dark:border-white/10 shadow-sm rounded-full px-2.5 py-1">
               <Globe size={16} className="text-text-muted" />
               <select 
                 value={language || 'en'} 
@@ -93,7 +93,7 @@ const TopBar = () => {
               </select>
             </div>
             
-            <button onClick={toggleTheme} className="p-2 rounded-full bg-white/30 dark:bg-black/20 text-text-main hover:bg-primary/20 transition-colors">
+            <button onClick={toggleTheme} className="p-2 rounded-full bg-white/50 dark:bg-black/30 border border-white/40 dark:border-white/10 shadow-sm text-text-main hover:bg-primary/20 transition-colors">
               {isDark ? <Sun size={18} /> : <Moon size={18} />}
             </button>
           </>
@@ -104,7 +104,7 @@ const TopBar = () => {
             <div className="relative" ref={notifRef}>
               <button 
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="p-2 rounded-full bg-white/30 dark:bg-black/20 text-text-main hover:bg-primary/20 transition-colors relative"
+                className="p-2 rounded-full bg-white/50 dark:bg-black/30 border border-white/40 dark:border-white/10 shadow-sm text-text-main hover:bg-primary/20 transition-colors relative"
               >
                 <Bell size={18} />
                 {unreadCount > 0 && (
@@ -158,7 +158,7 @@ const TopBar = () => {
               <span className="font-semibold text-sm">{user.full_name}</span>
               <span className="text-xs text-text-muted uppercase">{user.role}</span>
             </div>
-            <Button variant="secondary" onClick={() => setShowLogoutConfirm(true)} className="!p-2 !rounded-full bg-white/40 hover:bg-red-100 text-danger border border-red-200" title="Logout">
+            <Button variant="secondary" onClick={() => setShowLogoutConfirm(true)} className="!p-2 !rounded-full bg-white/50 dark:bg-black/30 hover:bg-red-100 dark:hover:bg-red-900/40 text-danger border border-red-200/80 dark:border-red-900/40 shadow-sm" title="Logout">
               <LogIn size={18} />
             </Button>
           </div>

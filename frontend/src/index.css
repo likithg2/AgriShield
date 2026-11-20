@@ -127,6 +127,43 @@ body::after {
   box-shadow: var(--glass-shadow), var(--glass-inner-glow), 0 0 0 1px rgba(255, 255, 255, 0.15);
 }
 
+/* Glossy Translucent Frosted Glass Navbar */
+.glass-navbar {
+  background: rgba(255, 255, 255, 0.82) !important;
+  backdrop-filter: blur(28px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.85) !important;
+  box-shadow: 0 12px 36px -8px rgba(16, 185, 129, 0.14),
+              0 4px 12px -2px rgba(0, 0, 0, 0.05),
+              inset 0 1px 2px 0 rgba(255, 255, 255, 0.95),
+              inset 0 -1px 1px 0 rgba(0, 0, 0, 0.03) !important;
+  border-radius: var(--radius-lg);
+  transition: var(--transition-smooth);
+}
+
+.glass-navbar:hover {
+  box-shadow: 0 16px 42px -8px rgba(16, 185, 129, 0.20),
+              0 6px 14px -2px rgba(0, 0, 0, 0.06),
+              inset 0 1px 2px 0 rgba(255, 255, 255, 1) !important;
+}
+
+.dark .glass-navbar {
+  background: rgba(3, 41, 33, 0.84) !important; /* rich translucent emerald */
+  backdrop-filter: blur(28px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  box-shadow: 0 12px 36px -8px rgba(0, 0, 0, 0.55),
+              0 4px 12px -2px rgba(0, 0, 0, 0.3),
+              inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.18),
+              inset 0 -1px 1px 0 rgba(0, 0, 0, 0.2) !important;
+}
+
+.dark .glass-navbar:hover {
+  box-shadow: 0 16px 42px -8px rgba(0, 0, 0, 0.65),
+              0 6px 14px -2px rgba(0, 0, 0, 0.35),
+              inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.25) !important;
+}
+
 .btn-primary {
   background: var(--primary);
   color: white;

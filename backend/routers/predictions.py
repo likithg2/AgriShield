@@ -28,6 +28,18 @@ from backend.auth import get_current_user
 from backend.config import settings
 import requests
 
+# Ensure Cython internal loss module is mapped to sys.modules['_loss'] so that
+# unpickling artifacts_v2.pkl succeeds across Linux (Render) and different scikit-learn versions
+try:
+    import sklearn._loss._loss as _cy_loss
+    sys.modules["_loss"] = _cy_loss
+except (ImportError, AttributeError):
+    try:
+        import sklearn._loss as _sk_loss
+        sys.modules["_loss"] = _sk_loss
+    except ImportError:
+        pass
+
 router = APIRouter(prefix="/api/predictions", tags=["Predictions"])
 
 # ── Load ML artifacts once ────────────────────────────────────────────────────
@@ -43,6 +55,19 @@ def _load_artifacts():
         return _artifacts_cache
     if not ARTIFACTS_PATH.exists():
         return f"Error: Artifacts path does not exist: {ARTIFACTS_PATH}"
+    
+    # Re-verify _loss mapping before unpickling
+    if "_loss" not in sys.modules:
+        try:
+            import sklearn._loss._loss as _cy_loss
+            sys.modules["_loss"] = _cy_loss
+        except (ImportError, AttributeError):
+            try:
+                import sklearn._loss as _sk_loss
+                sys.modules["_loss"] = _sk_loss
+            except ImportError:
+                pass
+
     try:
         _artifacts_cache = joblib.load(ARTIFACTS_PATH)
         return _artifacts_cache
