@@ -14,10 +14,10 @@ logger = logging.getLogger(__name__)
 def send_email_otp(to_email: str, otp_code: str) -> None:
     """
     OTP delivery stub — external SMTP is disabled.
-    The OTP is already stored in the database; it is logged here
-    so an administrator can retrieve it from server logs if needed.
+    The OTP is stored in the database; logged at debug level (not info)
+    so it does not appear in production log streams by default.
     """
-    logger.info("[IN-APP ONLY] OTP for %s: %s (not sent via email)", to_email, otp_code)
+    logger.debug("[DEV ONLY] OTP stored in DB for %s — retrieve via admin panel", to_email)
 
 
 def send_email_notification(to_email: str, subject: str, message_body: str) -> None:
@@ -31,8 +31,7 @@ def send_email_notification(to_email: str, subject: str, message_body: str) -> N
 def send_sms_otp(to_phone: str, otp_code: str) -> None:
     """
     SMS delivery stub — Fast2SMS is disabled.
-    The OTP is already stored in the database; it is logged here
-    so an administrator can retrieve it from server logs if needed.
+    The OTP is stored in the database; logged at debug level only.
     """
-    logger.info("[IN-APP ONLY] OTP for %s: %s (not sent via SMS)", to_phone, otp_code)
+    logger.debug("[DEV ONLY] OTP stored in DB for %s — retrieve via admin panel", to_phone)
 

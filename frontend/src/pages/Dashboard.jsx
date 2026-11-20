@@ -5,8 +5,8 @@ import { AuthContext } from '../context/AuthContext';
 import { NotificationContext } from '../context/NotificationContext';
 import GlassCard from '../components/GlassCard';
 import Button from '../components/Button';
-import { farmersAPI, authAPI, shipmentsAPI } from '../utils/api';
-import { Package, Trash2, Bell, Edit2, Check, X, Truck, AlertTriangle, Search, Filter, KeyRound, Eye, EyeOff, History } from 'lucide-react';
+import { farmersAPI, authAPI, shipmentsAPI, adminAPI } from '../utils/api';
+import { Package, Trash2, Bell, Edit2, Check, X, Truck, AlertTriangle, Search, Filter, KeyRound, Eye, EyeOff, History, Users, Key } from 'lucide-react';
 import { useResendTimer } from '../hooks/useResendTimer';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -37,6 +37,42 @@ const Dashboard = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showNotificationHistory, setShowNotificationHistory] = useState(false);
   const [selectedActiveShipment, setSelectedActiveShipment] = useState(null);
+
+  // Admin User Management State
+  const [showAdminUsersModal, setShowAdminUsersModal] = useState(false);
+  const [adminUsersList, setAdminUsersList] = useState([]);
+  const [adminUsersLoading, setAdminUsersLoading] = useState(false);
+  const [resetTargetUser, setResetTargetUser] = useState(null);
+  const [adminNewPassword, setAdminNewPassword] = useState('');
+  const [adminResetSubmitting, setAdminResetSubmitting] = useState(false);
+
+  const loadAdminUsers = async () => {
+    try {
+      setAdminUsersLoading(true);
+      const res = await adminAPI.listUsers();
+      setAdminUsersList(res.data);
+    } catch (err) {
+      toast.error('Failed to load users');
+    } finally {
+      setAdminUsersLoading(false);
+    }
+  };
+
+  const handleAdminResetPassword = async (e) => {
+    e.preventDefault();
+    if (!resetTargetUser || !adminNewPassword) return;
+    try {
+      setAdminResetSubmitting(true);
+      await adminAPI.resetUserPassword(resetTargetUser.id, adminNewPassword);
+      toast.success(`Password reset for ${resetTargetUser.email}`);
+      setResetTargetUser(null);
+      setAdminNewPassword('');
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to reset password');
+    } finally {
+      setAdminResetSubmitting(false);
+    }
+  };
 
   const handleDeleteAccount = async () => {
     try {
@@ -262,6 +298,18 @@ const Dashboard = () => {
                 ))}
               </select>
             </div>
+          )}
+          {user.role === 'admin' && (
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShowAdminUsersModal(true);
+                void loadAdminUsers();
+              }}
+              icon={Users}
+            >
+              User Management
+            </Button>
           )}
           <Button variant="secondary" onClick={() => setIsEditing(!isEditing)} icon={isEditing ? X : Edit2}>
             {isEditing ? 'Cancel Edit' : 'Edit Profile'}
@@ -783,6 +831,116 @@ const Dashboard = () => {
                 Close
               </Button>
             </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ADMIN USERS & PASSWORD RESET MODAL */}
+      <AnimatePresence>
+        {showAdminUsersModal && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }} 
+              animate={{ scale: 1, opacity: 1, y: 0 }} 
+              exit={{ scale: 0.95, opacity: 0, y: 20 }} 
+              transition={{ type: "spring", duration: 0.4 }}
+              className="w-full max-w-3xl flex flex-col p-0 border border-glass-border shadow-2xl overflow-hidden rounded-2xl bg-white dark:bg-gray-900"
+            >
+              <div className="p-4 border-b border-glass-border flex justify-between items-center bg-gray-50 dark:bg-black/20">
+                <div className="flex items-center gap-2">
+                  <Users className="text-primary" size={22} />
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">User Management & Password Reset</h3>
+                </div>
+                <button 
+                  onClick={() => { setShowAdminUsersModal(false); setResetTargetUser(null); setAdminNewPassword(''); }}
+                  className="p-1 rounded-full text-text-muted hover:text-danger transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="p-6 overflow-y-auto max-h-[70vh] space-y-4">
+                {adminUsersLoading ? (
+                  <div className="py-8 text-center text-text-muted">Loading users...</div>
+                ) : adminUsersList.length === 0 ? (
+                  <div className="py-8 text-center text-text-muted">No users found.</div>
+                ) : (
+                  <div className="divide-y divide-glass-border border border-glass-border rounded-xl overflow-hidden">
+                    {adminUsersList.map((u) => (
+                      <div key={u.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text-main">{u.full_name}</span>
+                            <span className="text-xs px-2 py-0.5 rounded-full uppercase font-medium bg-primary/10 text-primary border border-primary/20">
+                              {u.role}
+                            </span>
+                            {u.id === user.id && (
+                              <span className="text-xs text-text-muted">(You)</span>
+                            )}
+                          </div>
+                          <div className="text-xs text-text-muted mt-1 space-x-3">
+                            <span>Email: {u.email}</span>
+                            <span>Phone: {u.phone}</span>
+                            {u.district && <span>District: {u.district}</span>}
+                          </div>
+                        </div>
+
+                        {u.id !== user.id && (
+                          <div>
+                            {resetTargetUser?.id === u.id ? (
+                              <form onSubmit={handleAdminResetPassword} className="flex items-center gap-2 mt-2 sm:mt-0">
+                                <input
+                                  type="password"
+                                  placeholder="New password (min 6)"
+                                  minLength="6"
+                                  value={adminNewPassword}
+                                  onChange={(e) => setAdminNewPassword(e.target.value)}
+                                  className="input-field py-1 px-2.5 text-xs w-44"
+                                  required
+                                  autoFocus
+                                />
+                                <Button type="submit" className="!py-1 !px-2.5 !text-xs" disabled={adminResetSubmitting}>
+                                  {adminResetSubmitting ? 'Saving...' : 'Save'}
+                                </Button>
+                                <Button 
+                                  type="button" 
+                                  variant="secondary" 
+                                  className="!py-1 !px-2.5 !text-xs"
+                                  onClick={() => { setResetTargetUser(null); setAdminNewPassword(''); }}
+                                >
+                                  Cancel
+                                </Button>
+                              </form>
+                            ) : (
+                              <Button
+                                variant="secondary"
+                                className="!py-1 !px-3 !text-xs flex items-center gap-1.5"
+                                onClick={() => { setResetTargetUser(u); setAdminNewPassword(''); }}
+                              >
+                                <Key size={14} /> Reset Password
+                              </Button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="p-4 border-t border-glass-border bg-gray-50 dark:bg-black/20 flex justify-end">
+                <Button 
+                  onClick={() => { setShowAdminUsersModal(false); setResetTargetUser(null); setAdminNewPassword(''); }}
+                  variant="secondary"
+                  className="!py-1.5 !px-4 text-sm"
+                >
+                  Close
+                </Button>
+              </div>
             </motion.div>
           </motion.div>
         )}

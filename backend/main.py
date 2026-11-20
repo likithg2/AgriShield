@@ -17,7 +17,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.database import engine, Base, SessionLocal
-from backend.routers import auth, predictions, shipments, warehouses, farmers, notifications, ai
+from backend.routers import auth, predictions, shipments, warehouses, farmers, notifications, ai, admin
 
 import asyncio
 from backend.tasks import background_monitoring_loop
@@ -86,6 +86,7 @@ app.include_router(warehouses.router)
 app.include_router(farmers.router)
 app.include_router(notifications.router)
 app.include_router(ai.router)
+app.include_router(admin.router)
 
 
 # ── Health Endpoints ──────────────────────────────────────────────────────────

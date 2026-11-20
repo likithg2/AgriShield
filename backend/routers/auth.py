@@ -20,7 +20,6 @@ from backend.auth import (
     hash_password, verify_password, create_access_token, get_current_user,
 )
 from backend.communications import send_email_otp, send_sms_otp
-
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 # In-memory store for pending email changes (not persisted across restarts)
@@ -172,36 +171,18 @@ def verify_otp_login(payload: OTPVerifyLogin, db: Session = Depends(get_db)):
 @router.post("/forgot-password")
 def forgot_password(
     payload: ForgotPasswordRequest,
-    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
     """
-    Generate a password-reset OTP and store it in the database.
-    The OTP is logged to the server console (email/SMS delivery is disabled).
-    An administrator can retrieve it from server logs and relay it to the user.
+    Self-service password reset is disabled (no email/SMS delivery available).
+    Returns a 200 with instructions to contact an administrator, regardless of
+    whether the account exists, to prevent user enumeration.
     """
-    user = db.query(User).filter(
-        or_(User.email == payload.login_id, User.phone == payload.login_id)
-    ).first()
-
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found.")
-
-    otp = _generate_otp()
-    user.otp_code = otp
-    user.otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
-    db.commit()
-
-    # Delivery is console-only; the OTP is also visible in server (Render) logs.
-    if "@" in payload.login_id:
-        background_tasks.add_task(send_email_otp, user.email, otp)
-    else:
-        background_tasks.add_task(send_sms_otp, user.phone, otp)
-
+    # Intentionally do not reveal whether the account exists (prevents enumeration)
     return {
         "message": (
-            "A reset code has been generated and saved. "
-            "It is visible in the server logs — contact your administrator to retrieve it."
+            "Self-service password reset is not available. "
+            "Please contact your administrator to have your password reset."
         )
     }
 

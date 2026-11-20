@@ -37,10 +37,14 @@ export const authAPI = {
   getProfile: () => api.get('/auth/me'),
   updateProfile: (data) => api.put('/auth/me', data),
   deleteAccount: () => api.delete('/auth/me'),
-  forgotPassword: (login_id) => api.post('/auth/forgot-password', { login_id }),
-  resetPassword: (login_id, otp, new_password) => api.post('/auth/reset-password', { login_id, otp, new_password }),
   requestEmailOTP: (new_email) => api.post('/auth/request-email-otp', { new_email }),
   verifyEmailOTP: (new_email, otp) => api.post('/auth/verify-email-otp', { new_email, otp }),
+};
+
+export const adminAPI = {
+  listUsers: () => api.get('/admin/users'),
+  resetUserPassword: (userId, new_password) =>
+    api.post(`/admin/users/${userId}/reset-password`, { new_password }),
 };
 
 export const predictionsAPI = {

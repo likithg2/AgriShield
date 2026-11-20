@@ -1,27 +1,20 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Leaf, Lock, Mail, ArrowRight, KeyRound, Eye, EyeOff } from 'lucide-react';
+import { Leaf, Lock, Mail, ArrowRight, Eye, EyeOff, ShieldAlert } from 'lucide-react';
 import GlassCard from '../components/GlassCard';
 import Button from '../components/Button';
 import { authAPI } from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 import { ThemeContext } from '../context/ThemeContext';
-import { useResendTimer } from '../hooks/useResendTimer';
 
 const Login = () => {
-  // Views: 'login' | 'register' | 'forgot-password' | 'reset-password'
+  // Views: 'login' | 'register' | 'forgot-password'
   const [view, setView] = useState('login');
 
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
-  const [otp, setOtp] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-
-  const { timeLeft, isTimerActive, startTimer, formattedTime } = useResendTimer(120);
 
   const [showPassword, setShowPassword] = useState(false);
-  const [showOtp, setShowOtp] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
 
   // Registration States
   const [role, setRole] = useState('farmer');
@@ -119,41 +112,8 @@ const Login = () => {
   };
 
   // ── Forgot / Reset password ────────────────────────────────────────────────
-  const handleForgotPassword = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    clearMessages();
-    try {
-      await authAPI.forgotPassword(loginId);
-      setSuccessMsg(
-        'Reset code generated. Contact your administrator to retrieve it from the server logs, then enter it below.'
-      );
-      setView('reset-password');
-      startTimer();
-    } catch (err) {
-      setError(getErrorMessage(err, 'Account not found.'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResetPassword = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    clearMessages();
-    try {
-      await authAPI.resetPassword(loginId, otp, newPassword);
-      setSuccessMsg('Password reset successfully! You can now log in.');
-      setView('login');
-      setPassword('');
-      setOtp('');
-      setNewPassword('');
-    } catch (err) {
-      setError(getErrorMessage(err, 'Failed to reset password. Invalid or expired code.'));
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Self-service password reset is not available (no email/SMS delivery).
+  // The forgot-password view shows contact-admin instructions instead.
 
   return (
     <div className="flex-1 flex items-center justify-center relative min-h-[80vh]">
@@ -169,14 +129,12 @@ const Login = () => {
           <h1 className="text-3xl font-bold mb-2">
             {view === 'login' && 'Welcome Back'}
             {view === 'register' && 'Create an Account'}
-            {view === 'forgot-password' && 'Reset Password'}
-            {view === 'reset-password' && 'Create New Password'}
+            {view === 'forgot-password' && 'Password Recovery'}
           </h1>
           <p className="text-text-muted">
             {view === 'login' && 'Enter your credentials to access your dashboard'}
             {view === 'register' && 'Join the Post-Harvest network'}
-            {view === 'forgot-password' && 'Enter your email or phone to generate a reset code'}
-            {view === 'reset-password' && 'Enter the reset code and your new password'}
+            {view === 'forgot-password' && 'Contact your administrator to reset your password'}
           </p>
         </div>
 
@@ -333,108 +291,28 @@ const Login = () => {
 
         {/* VIEW: FORGOT PASSWORD */}
         {view === 'forgot-password' && (
-          <form autoComplete="off" onSubmit={handleForgotPassword} className="space-y-6">
-            <div className="space-y-2">
-              <label htmlFor="forgot-pwd-id" className="text-sm font-medium ml-1">Email or Phone</label>
-              <div className="relative">
-                {!loginId && (
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-text-muted">
-                    <Mail size={18} />
-                  </div>
-                )}
-                <input
-                  id="forgot-pwd-id"
-                  type="text"
-                  value={loginId} autoComplete="off"
-                  onChange={(e) => setLoginId(e.target.value)}
-                  className={`input-field ${loginId ? 'pl-4' : 'pl-10'} bg-primary/10 dark:bg-primary/20`}
-                  required
-                />
+          <div className="space-y-6">
+            <div className="p-4 rounded-xl bg-primary/10 border border-primary/20 text-center space-y-3">
+              <div className="inline-flex p-3 rounded-full bg-primary/20 text-primary">
+                <ShieldAlert size={28} />
+              </div>
+              <h3 className="font-semibold text-text-main text-base">Self-service reset is unavailable</h3>
+              <p className="text-sm text-text-muted leading-relaxed">
+                To keep your account secure without relying on third-party SMS/Email gateways, password resets are handled directly by system administrators.
+              </p>
+              <div className="text-xs bg-white/40 dark:bg-black/30 p-2.5 rounded-lg border border-glass-border text-text-muted">
+                Contact: <strong className="text-text-main">admin@postharvest.in</strong> or speak with your system supervisor to request a password reset.
               </div>
             </div>
 
             <Button
-              type="submit"
-              className="w-full justify-center mt-4 py-3 text-lg font-semibold shadow-lg shadow-primary/30"
-              disabled={loading}
+              type="button"
+              className="w-full justify-center py-3 text-base font-semibold shadow-lg shadow-primary/30"
+              onClick={() => { setView('login'); clearMessages(); }}
             >
-              {loading ? 'Generating...' : 'Generate Reset Code'}
+              Back to Login
             </Button>
-
-            <div className="text-center pt-2">
-              <button type="button" onClick={() => { setView('login'); clearMessages(); }} className="text-sm text-text-muted hover:text-primary transition-colors">
-                Back to Login
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* VIEW: RESET PASSWORD */}
-        {view === 'reset-password' && (
-          <form autoComplete="off" onSubmit={handleResetPassword} className="space-y-6">
-            <div className="space-y-2">
-              <label htmlFor="reset-pwd-otp" className="text-sm font-medium ml-1">Reset Code</label>
-              <div className="relative">
-                {!otp && (
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-text-muted">
-                    <KeyRound size={18} />
-                  </div>
-                )}
-                <input
-                  id="reset-pwd-otp"
-                  type={showOtp ? 'text' : 'password'}
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  className={`input-field ${otp ? 'pl-4' : 'pl-10'} pr-10 bg-primary/10 dark:bg-primary/20 tracking-widest`}
-                  maxLength="6"
-                  required
-                />
-                <button type="button" onClick={() => setShowOtp(!showOtp)} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-main" tabIndex="-1">
-                  {showOtp ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="reset-pwd-new" className="text-sm font-medium ml-1">New Password</label>
-              <div className="relative">
-                {!newPassword && (
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-text-muted">
-                    <Lock size={18} />
-                  </div>
-                )}
-                <input
-                  id="reset-pwd-new"
-                  type={showNewPassword ? 'text' : 'password'}
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className={`input-field ${newPassword ? 'pl-4' : 'pl-10'} pr-10 bg-primary/10 dark:bg-primary/20`}
-                  required
-                  minLength="6"
-                />
-                <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-main" tabIndex="-1">
-                  {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-
-            <Button
-              type="submit"
-              className="w-full justify-center mt-4 py-3 text-lg font-semibold shadow-lg shadow-primary/30"
-              disabled={loading}
-            >
-              {loading ? 'Updating...' : 'Update Password'}
-            </Button>
-
-            <div className="flex flex-col gap-2 text-center pt-2 mt-4">
-              <button type="button" onClick={handleForgotPassword} disabled={isTimerActive || loading} className="text-sm text-primary font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:underline">
-                {isTimerActive ? `Resend Reset Code in ${formattedTime()}` : 'Resend Reset Code'}
-              </button>
-              <button type="button" onClick={() => { setView('forgot-password'); clearMessages(); setOtp(''); setNewPassword(''); }} className="text-sm text-text-muted hover:text-primary transition-colors mt-2">
-                Back
-              </button>
-            </div>
-          </form>
+          </div>
         )}
 
         {view === 'login' && (
