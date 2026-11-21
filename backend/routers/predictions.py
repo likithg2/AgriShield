@@ -239,6 +239,269 @@ def get_weather(district: str):
         return {"temp": 25.0, "humidity": 60.0, "wind": 8.0, "rain": 0.0, "clouds": 40, "desc": "API Error", "status": "error"}
 
 
+CROP_MODEL_MAPPING = {
+    "Cucumber": "Capsicum",
+}
+
+
+def generate_dynamic_advisories(
+    crop: str,
+    district: str,
+    storage_days: int,
+    actual_transit_days: float,
+    expected_transit_days: float,
+    temperature: float,
+    humidity: float,
+    road_condition: str,
+    risk_level: str,
+    loss_val: float,
+    prob_val: float,
+    shelf_val: float,
+    financial_loss: float,
+    facility_name: str,
+    dist_km: float,
+    mandi_price: float,
+) -> tuple[str, str]:
+    """Generate comprehensive, tailored post-harvest advisory in both English and Kannada."""
+    harvest_status = "Harvested today (Day 0)" if storage_days == 0 else f"{storage_days} days post-harvest"
+    prob_pct = prob_val * 100.0
+
+    # 1. Attempt dynamic GenAI generation with Gemini if API key is configured
+    if settings.GEMINI_API_KEY:
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=settings.GEMINI_API_KEY)
+            model = genai.GenerativeModel('gemini-flash-lite-latest', generation_config={'response_mime_type': 'application/json'})
+
+            prompt = f"""
+You are an expert post-harvest agricultural scientist in India.
+Generate a tailored post-harvest advisory for a shipment of {crop} in {district}, Karnataka.
+Shipment details:
+- Crop: {crop}
+- Harvest status: {harvest_status}
+- Transit time: {actual_transit_days:.1f} days (target: {expected_transit_days:.1f} days) via {road_condition}
+- Ambient conditions: {temperature:.1f}°C, {humidity:.1f}% relative humidity
+- Predicted risk: {risk_level} risk ({prob_pct:.1f}% spoilage probability, estimated volume loss: {loss_val:.1f}%)
+- Estimated crop value at risk: ₹{financial_loss:,.0f}
+- Recommended cold storage: {facility_name} ({dist_km:.1f} km away, extends shelf life by {shelf_val:.1f} days)
+- Current local mandi benchmark price: ₹{mandi_price:.2f}/kg
+
+Return a valid JSON object with exactly two keys: "en" and "kn".
+Format requirements for "en":
+Post-Harvest AI Advisory for {crop}
+
+[2-sentence concise professional overview stating the harvest condition, spoilage probability, and financial impact]
+
+Actionable Handling Guidelines:
+- [Detailed practical handling point 1 on pre-cooling and core temperature tailored specifically to {crop}]
+- [Detailed practical handling point 2 on packaging, crating ventilation, and stacking height limits for {crop}]
+- [Detailed practical handling point 3 on ethylene gas separation, relative humidity, or transpiration barrier for {crop}]
+- [Detailed practical handling point 4 on transit vibration dampening, physical cushioning, or sunlight protection for {crop}]
+
+Critical Risk Factors & Degradation Triggers:
+- [Short, unique point 1 on thermal stress and respiration for {crop} under {temperature:.1f}°C ambient heat]
+- [Short, unique point 2 on mechanical impact or vibration damage over {road_condition}]
+
+Immediate Recommendation:
+- [Detailed point 1 on direct routing and target arrival window to {facility_name} ({dist_km:.1f} km away)]
+- [Detailed point 2 on cold vault receipt staging and temperature setting to gain up to {shelf_val:.1f} days shelf life]
+- [Detailed point 3 on market realization timing (benchmarking ₹{mandi_price:.2f}/kg) and off-peak dispatch]
+
+Format requirements for "kn":
+Translate the exact same tailored structure into fluent, natural, grammatically correct Kannada suited for Karnataka farmers, using proper Kannada section titles:
+- Title: {crop} ಬೆಳೆಗಾಗಿ ಎಐ ಆಧಾರಿತ ಸುಗ್ಗಿಯ ನಂತರದ ಸಲಹೆ
+- ಆಚರಣೆಗೆ ಯೋಗ್ಯವಾದ ನಿರ್ವಹಣಾ ಮಾರ್ಗಸೂಚಿಗಳು: (4 detailed points)
+- ಪ್ರಮುಖ ಅಪಾಯಕಾರಿ ಅಂಶಗಳು ಮತ್ತು ಹಾಳಾಗಲು ಕಾರಣಗಳು: (2 short unique points)
+- ತಕ್ಷಣದ ಶಿಫಾರಸು: (3 detailed points)
+"""
+            ai_resp = model.generate_content(prompt)
+            parsed = json.loads(ai_resp.text)
+            if "en" in parsed and "kn" in parsed:
+                en_str = str(parsed["en"]).strip()
+                kn_str = str(parsed["kn"]).strip()
+                if "Actionable Handling Guidelines:" in en_str and "Critical Risk Factors" in en_str:
+                    return en_str, kn_str
+        except Exception as e:
+            logger.info("Gemini dynamic advisory fallback triggered: %s", e)
+
+    # 2. Rule-based expert generator (deterministic, tailored, instantaneous)
+    crop_profiles = {
+        "Tomato": {
+            "temp_opt": "12°C–15°C",
+            "rh_opt": "85%–90%",
+            "guidelines": [
+                "Pre-Cooling & Pulp Temperature: Remove field heat within 2 hours of harvest via shaded staging or forced-air cooling. Maintain core pulp temperature between 12°C–15°C; avoid chilling below 10°C to prevent chilling injury, flavor loss, and watery breakdown.",
+                "Crating & Layer Depth: Pack exclusively in rigid, ventilated plastic crates with maximum 2–3 layers of fruit. Avoid over-filling to eliminate compressive bruising and skin punctures that trigger soft rot.",
+                "Ethylene & Airflow Control: Isolate tomatoes from ethylene-sensitive leafy crops and ensure continuous ventilation to clear respiratory heat and inhibit Alternaria and Botrytis spore germination.",
+                f"Transit Cushioning: Secure crates tightly with corner straps and buffer bottom rows with corrugated paper pads to absorb road vibration on {road_condition}."
+            ],
+            "risks": [
+                f"Thermal & Respiration Stress: Ambient temperature of {temperature:.1f}°C accelerates tomato respiration and soft ripening.",
+                f"Skin Rupture & Abrasion: Mechanical vibration over {road_condition} produces micro-fissures on tender pericarp skin.",
+                f"Fungal Pathogen Risk: {humidity:.1f}% humidity creates an active microclimate for black mold and sour rot at contact points."
+            ],
+            "kn_name": "ಟೊಮೆಟೊ",
+            "kn_guidelines": [
+                "ಪ್ರೀ-ಕೂಲಿಂಗ್ ಮತ್ತು ತಾಪಮಾನ: ಸುಗ್ಗಿಯ ನಂತರ 2 ಗಂಟೆಗಳ ಒಳಗೆ ನೆರಳಿನಲ್ಲಿ ಇರಿಸಿ ಬಿಸಿಯನ್ನು ಕಡಿಮೆ ಮಾಡಿ. ತಾಪಮಾನವನ್ನು 12°C–15°C ನಡುವೆ ಇರಿಸಿ; 10°C ಗಿಂತ ಕಡಿಮೆ ಮಾಡಬೇಡಿ.",
+                "ಕ್ರೇಟಿಂಗ್ ಮತ್ತು ಲೇಯರ್ ನಿಯಂತ್ರಣ: ಗಾಳಿಯಾಡುವ ಪ್ಲಾಸ್ಟಿಕ್ ಕ್ರೇಟ್‌ಗಳಲ್ಲಿ ಗರಿಷ್ಠ 2-3 ಪದರಗಳಲ್ಲಿ ಮಾತ್ರ ಜೋಡಿಸಿ, ತಳಭಾಗದ ಹಣ್ಣುಗಳು ಜಜ್ಜುವುದನ್ನು ತಪ್ಪಿಸಿ.",
+                "ಎಥಿಲೀನ್ ಮತ್ತು ವಾತಾಯನ: ಎಥಿಲೀನ್ ಉತ್ಪಾದಿಸುವ ಹಣ್ಣುಗಳಿಂದ ಬೇರ್ಪಡಿಸಿ ಮತ್ತು ಶಿಲೀಂಧ್ರ ರೋಗಗಳನ್ನು ತಡೆಯಲು ನಿರಂತರ ಗಾಳಿಯಾಡುವಂತೆ ನೋಡಿಕೊಳ್ಳಿ.",
+                f"ಸಾರಿಗೆ ರಕ್ಷಣೆ: {road_condition} ರಸ್ತೆಯಲ್ಲಿನ ಆಘಾತಗಳನ್ನು ಕಡಿಮೆ ಮಾಡಲು ಕ್ರೇಟ್‌ಗಳ ತಳಭಾಗಕ್ಕೆ ರಟ್ಟಿನ ಪ್ಯಾಡ್‌ಗಳನ್ನು ಬಳಸಿ."
+            ],
+            "kn_risks": [
+                f"ತಾಪಮಾನ ಒತ್ತಡ: ಪ್ರಸ್ತುತ {temperature:.1f}°C ತಾಪಮಾನವು ಟೊಮೆಟೊ ಉಸಿರಾಟವನ್ನು ಹೆಚ್ಚಿಸಿ ಬೇಗನೆ ಮೆತ್ತಗಾಗಿಸುತ್ತದೆ.",
+                f"ರಸ್ತೆ ಕಂಪನ ಹಾನಿ: {road_condition} ರಸ್ತೆಯ ಸಾಗಾಟದಲ್ಲಿ ಸಿಪ್ಪೆಗೆ ಗಾಯಗಳು ಮತ್ತು ಬಿರುಕುಗಳು ಉಂಟಾಗಬಹುದು.",
+                f"ಶಿಲೀಂಧ್ರ ಸೋಂಕು: {humidity:.1f}% ತೇವಾಂಶವು ಗಾಯಗೊಂಡ ಸ್ಥಳಗಳಲ್ಲಿ ಕೊಳೆಯುವಿಕೆಯನ್ನು ಪ್ರಚೋದಿಸುತ್ತದೆ."
+            ]
+        },
+        "Cucumber": {
+            "temp_opt": "10°C–12.5°C",
+            "rh_opt": "90%–95%",
+            "guidelines": [
+                "Temperature Precision: Maintain storage strictly between 10°C–12.5°C. Temperatures under 10°C induce severe water-soaked pitting (chilling injury), while heat above 15°C triggers rapid yellowing and senescence.",
+                "Transpiration & Moisture Barrier: Line ventilated crates with perforated food-grade moisture film. This maintains 90%–95% RH to preserve turgor pressure and crunchiness while preventing free condensation.",
+                "Strict Ethylene Segregation: Cucumbers are hyper-sensitive to ethylene gas; never co-transport or store alongside ripening tomatoes, bananas, or apples, which trigger rapid degreening and bitter off-flavors.",
+                f"Surface Protection: Handle with clean cotton gloves and pad crate walls with corrugated paper liners to prevent skin scratches during transit across {road_condition}."
+            ],
+            "risks": [
+                f"Moisture Loss & Shriveling: High water content (96%) causes rapid moisture transpirational loss under {temperature:.1f}°C ambient air.",
+                f"Friction & Surface Pitting: Rough transit over {road_condition} causes surface abrasions that accelerate microbial infection.",
+                f"Chilling & Yellowing Sensitivity: Highly intolerant to thermal swings outside the 10°C–13°C safe preservation window."
+            ],
+            "kn_name": "ಸೌತೆಕಾಯಿ",
+            "kn_guidelines": [
+                "ನಿಖರ ತಾಪಮಾನ ನಿರ್ವಹಣೆ: ತಾಪಮಾನವನ್ನು ಕಟ್ಟುನಿಟ್ಟಾಗಿ 10°C–12.5°C ನಡುವೆ ಕಾಪಾಡಿಕೊಳ್ಳಿ. 10°C ಗಿಂತ ಕಡಿಮೆ ತಾಪಮಾನವು ಗುಳಿ ಬೀಳುವಿಕೆಗೆ ಕಾರಣವಾಗುತ್ತದೆ, 15°C ಗಿಂತ ಹೆಚ್ಚು ಹಳದಿಯಾಗುವಿಕೆಯನ್ನು ಉಂಟುಮಾಡುತ್ತದೆ.",
+                "ತೇವಾಂಶ ಮತ್ತು ಬಿಗಿತ ರಕ್ಷಣೆ: ಸೌತೆಕಾಯಿಯ ನೀರಿನ ನಷ್ಟ ಮತ್ತು ಮುದುಡುವಿಕೆಯನ್ನು ತಡೆಯಲು ರಂಧ್ರವಿರುವ ಪ್ಲಾಸ್ಟಿಕ್ ಲೈನರ್‌ಗಳೊಂದಿಗೆ ಕ್ರೇಟ್‌ಗಳನ್ನು ಬಳಸಿ.",
+                "ಎಥಿಲೀನ್ ಅನಿಲದಿಂದ ಪ್ರತ್ಯೇಕತೆ: ಟೊಮೆಟೊ, ಬಾಳೆಹಣ್ಣಿನಂತಹ ಎಥಿಲೀನ್ ಹೊರಸೂಸುವ ಬೆಳೆಗಳೊಂದಿಗೆ ಎಂದಿಗೂ ಸಾಗಿಸಬೇಡಿ; ಇದು ಹಳದಿಯಾಗುವಿಕೆ ಮತ್ತು ಕಹಿ ರುಚಿಗೆ ಕಾರಣವಾಗುತ್ತದೆ.",
+                f"ಸಿಪ್ಪೆಯ ರಕ್ಷಣೆ: {road_condition} ರಸ್ತೆಯ ಸಾಗಾಟದಲ್ಲಿ ಗಾಯವಾಗದಂತೆ ಕ್ರೇಟ್‌ಗಳ ಒಳಭಾಗಕ್ಕೆ ಮೆತ್ತನೆಯ ಲೈನಿಂಗ್ ಹಾಕಿ."
+            ],
+            "kn_risks": [
+                f"ತೇವಾಂಶ ನಷ್ಟ: {temperature:.1f}°C ತಾಪಮಾನದಲ್ಲಿ ಸೌತೆಕಾಯಿಯ 96% ನೀರಿನ ಅಂಶವು ಬೇಗನೆ ಆವಿಯಾಗಿ ಮೆತ್ತಗಾಗುತ್ತದೆ.",
+                f"ರಸ್ತೆ ಘರ್ಷಣೆ: {road_condition} ರಸ್ತೆಯಲ್ಲಿನ ಕುಲುಕಾಟದಿಂದ ಸಿಪ್ಪೆಯ ಮೇಲೆ ಗೀರುಗಳು ಉಂಟಾಗುತ್ತವೆ.",
+                f"ತಾಪಮಾನ ಸೂಕ್ಷ್ಮತೆ: 10°C–13°C ತಾಪಮಾನದ ವ್ಯಾಪ್ತಿಯಿಂದ ಹೊರಗಿನ ಏರುಪೇರುಗಳನ್ನು ತಡೆಯಲಾರದು."
+            ]
+        },
+        "Potato": {
+            "temp_opt": "7°C–10°C",
+            "rh_opt": "90%–95%",
+            "guidelines": [
+                "Darkness & Solanine Prevention: Store in complete darkness to prevent chlorophyll synthesis and poisonous solanine accumulation (tuber greening).",
+                "Wound Curing (Suberization): Hold newly harvested tubers at 15°C–18°C with 90% RH for 5–7 days for wound healing and periderm thickening before lowering to cold storage temperature.",
+                "Controlled Cooling: Lower temperature gradually to 7°C–10°C for table potatoes to avoid cold-induced sweetening; maintain forced-air ventilation to suppress early sprouting.",
+                f"Drop & Impact Cushioning: Limit drop heights to under 30 cm during loading and pad vehicle floors with straw or foam mats to eliminate shatter bruises on {road_condition}."
+            ],
+            "risks": [
+                f"Respiratory Heat & Sprouting: Ambient temperatures ({temperature:.1f}°C) accelerate tuber respiration and trigger premature sprout emergence.",
+                f"Impact Shatter Bruising: Mechanical shock on {road_condition} causes internal blackspot bruising without external signs.",
+                f"Moisture Condensation: Relative humidity at {humidity:.1f}% without proper airflow risks bacterial soft rot."
+            ],
+            "kn_name": "ಆಲೂಗಡ್ಡೆ",
+            "kn_guidelines": [
+                "ಕತ್ತಲ ಕೋಣೆ ಸಂಗ್ರಹಣೆ: ಹಸಿರು ಬಣ್ಣಕ್ಕೆ ತಿರುಗುವುದನ್ನು ಮತ್ತು ಸೋಲನೈನ್ ವಿಷಕಾರಿ ಅಂಶ ಸಂಗ್ರಹವಾಗುವುದನ್ನು ತಡೆಯಲು ಕತ್ತಲೆಯಾದ ಕೋಣೆಯಲ್ಲಿ ಸಂಗ್ರಹಿಸಿ.",
+                "ಗಾಯ ಮಾಗುವಿಕೆ (ಕ್ಯೂರಿಂಗ್): ಶೈತ್ಯಾಗಾರಕ್ಕೆ ಹಾಕುವ ಮೊದಲು ಗೆಡ್ಡೆಗಳನ್ನು 5-7 ದಿನಗಳ ಕಾಲ 15°C–18°C ತಾಪಮಾನದಲ್ಲಿ ಗಾಯ ಮಾಗಲು ಬಿಡಿ.",
+                "ಮೊಳಕೆ ನಿಯಂತ್ರಣ: ತಿನ್ನುವ ಆಲೂಗಡ್ಡೆಯನ್ನು 7°C–10°C ತಾಪಮಾನದಲ್ಲಿ ನಿರಂತರ ಗಾಳಿಯಾಡುವಂತೆ ಇರಿಸಿ ಮೊಳಕೆಯೊಡೆಯುವುದನ್ನು ತಡೆಯಿರಿ.",
+                f"ಆಘಾತ ರಕ್ಷಣೆ: ಲೋಡಿಂಗ್ ಸಮಯದಲ್ಲಿ ಎತ್ತರದಿಂದ ಎಸೆಯಬೇಡಿ ಮತ್ತು {road_condition} ರಸ್ತೆಯ ಸಾಗಾಟದಲ್ಲಿ ಗಾಯವಾಗದಂತೆ ವಾಹನದ ನೆಲಕ್ಕೆ ಮೆತ್ತನೆಯ ಹುಲ್ಲು ಹಾಸಿ."
+            ],
+            "kn_risks": [
+                f"ಉಸಿರಾಟ ಮತ್ತು ಮೊಳಕೆ: {temperature:.1f}°C ತಾಪಮಾನವು ಆಲೂಗಡ್ಡೆಯ ಉಸಿರಾಟವನ್ನು ಹೆಚ್ಚಿಸಿ ಅಕಾಲಿಕ ಮೊಳಕೆಗೆ ಕಾರಣವಾಗುತ್ತದೆ.",
+                f"ಆಂತರಿಕ ಜಜ್ಜುವಿಕೆ: {road_condition} ರಸ್ತೆಯಲ್ಲಿನ ಆಘಾತಗಳು ಕಣ್ಣಿಗೆ ಕಾಣದ ಆಂತರಿಕ ಕಪ್ಪು ಕಲೆಗಳಿಗೆ ಕಾರಣವಾಗುತ್ತವೆ.",
+                f"ತೇವಾಂಶ ಅಪಾಯ: ಸರಿಯಾದ ಗಾಳಿಯಾಡದಿದ್ದಲ್ಲಿ {humidity:.1f}% ತೇವಾಂಶವು ಬ್ಯಾಕ್ಟೀರಿಯಲ್ ಕೊಳೆತಕ್ಕೆ ಕಾರಣವಾಗುತ್ತದೆ."
+            ]
+        },
+        "Onion": {
+            "temp_opt": "0°C–4°C (or ambient dry 20°C–25°C)",
+            "rh_opt": "65%–70%",
+            "guidelines": [
+                "Complete Neck Curing: Ensure outer tunic scales and necks are fully cured and dry before bagging; damp necks are the primary entry point for neck rot (Botrytis allii).",
+                "Low Relative Humidity: Keep relative humidity strictly at 65%–70%; humidity above 75% triggers root growth and black mold (Aspergillus niger).",
+                "Mesh Airflow Packaging: Pack exclusively in open-mesh polypropylene or jute sacks on raised wooden pallets, maintaining 15 cm clearance from walls for continuous convective airflow.",
+                "Avoid Wet Produce: Never store onions near high-moisture vegetables (cucumbers, tomatoes) or in plastic bags that trap respiratory water."
+            ],
+            "risks": [
+                f"High Humidity Decay: At {humidity:.1f}% humidity, onions absorb moisture, rapidly inducing neck rot and mold.",
+                f"Friction & Scale Peeling: Vibration on {road_condition} strips protective outer scales, exposing inner tissues.",
+                f"Sprouting under Enclosed Heat: Inadequate ventilation at {temperature:.1f}°C triggers internal root and sprout emergence."
+            ],
+            "kn_name": "ಈರುಳ್ಳಿ",
+            "kn_guidelines": [
+                "ಕತ್ತಿನ ಭಾಗ ಒಣಗಿಸುವಿಕೆ: ಚೀಲಗಳಲ್ಲಿ ತುಂಬುವ ಮುನ್ನ ಈರುಳ್ಳಿಯ ಕತ್ತಿನ ಭಾಗ ಮತ್ತು ಹೊರ ಸಿಪ್ಪೆ ಸಂಪೂರ್ಣವಾಗಿ ಒಣಗಿರಬೇಕು.",
+                "ಕಡಿಮೆ ತೇವಾಂಶ ನಿರ್ವಹಣೆ: ತೇವಾಂಶವನ್ನು ಶೇ. 65-70 ರೊಳಗೆ ಇರಿಸಿ; ಶೇ. 75 ಕ್ಕಿಂತ ಹೆಚ್ಚಾದರೆ ಕಪ್ಪು ಬೂಸ್ಟು ಮತ್ತು ಬೇರುಗಳು ಬರುತ್ತವೆ.",
+                "ಮೆಶ್ ಬ್ಯಾಗ್ ಬಳಕೆ: ಗಾಳಿಯಾಡುವ ನೈಲಾನ್ ಅಥವಾ ಗೋಣಿ ಚೀಲಗಳಲ್ಲಿ ತುಂಬಿ ಮರದ ಹಲಗೆಗಳ ಮೇಲೆ ಗೋಡೆಯಿಂದ 15 ಸೆಂ.ಮೀ ದೂರದಲ್ಲಿ ಇರಿಸಿ.",
+                "ತೇವದ ಬೆಳೆಗಳಿಂದ ಪ್ರತ್ಯೇಕತೆ: ನೀರಿನಾಂಶ ಹೆಚ್ಚಿರುವ ತರಕಾರಿಗಳೊಂದಿಗೆ ಅಥವಾ ಪ್ಲಾಸ್ಟಿಕ್ ಚೀಲಗಳಲ್ಲಿ ಎಂದಿಗೂ ಇಡಬೇಡಿ."
+            ],
+            "kn_risks": [
+                f"ಹೆಚ್ಚಿನ ತೇವಾಂಶದ ಕೊಳೆತ: {humidity:.1f}% ತೇವಾಂಶದಲ್ಲಿ ಈರುಳ್ಳಿ ನೀರನ್ನು ಹೀರಿಕೊಂಡು ಕತ್ತಿನ ಕೊಳೆತಕ್ಕೆ ಒಳಗಾಗುತ್ತದೆ.",
+                f"ಸಿಪ್ಪೆ ಸುಲಿಯುವಿಕೆ: {road_condition} ರಸ್ತೆಯ ಸಾಗಾಟದಲ್ಲಿ ರಕ್ಷಣಾತ್ಮಕ ಹೊರ ಸಿಪ್ಪೆ ಸುಲಿದು ಒಳಭಾಗಕ್ಕೆ ಹಾನಿಯಾಗುತ್ತದೆ.",
+                f"ಸೆಕೆ ಮತ್ತು ಮೊಳಕೆ: ಗಾಳಿಯಾಡದ {temperature:.1f}°C ಸೆಕೆಯು ಒಳಗೆ ಮೊಳಕೆಯೊಡೆಯುವುದನ್ನು ಪ್ರಚೋದಿಸುತ್ತದೆ."
+            ]
+        }
+    }
+
+    prof = crop_profiles.get(crop, {
+        "temp_opt": "10°C–15°C",
+        "rh_opt": "85%–90%",
+        "guidelines": [
+            "Pre-Cooling & Core Temperature: Remove field heat rapidly after harvest. Maintain holding temperature at 10°C–15°C to preserve cellular firmness.",
+            "Crating & Stacking Limit: Use rigid, ventilated crates with restricted stacking height to prevent bottom layer crush damage.",
+            "Gas & Air Circulation: Ensure adequate convective airflow across pallets to remove metabolic heat and CO2 buildup.",
+            f"Transit Cushioning: Buffer bottom and side crate layers with corrugated sheets to isolate shock during transit across {road_condition}."
+        ],
+        "risks": [
+            f"Thermal & Ambient Stress: Current ambient temperature ({temperature:.1f}°C) elevates respiration rate.",
+            f"Road Vibration Impact: Continuous vibration on {road_condition} causes mechanical abrasion and surface scuffing."
+        ],
+        "kn_name": crop,
+        "kn_guidelines": [
+            "ಪ್ರೀ-ಕೂಲಿಂಗ್ ಮತ್ತು ತಾಪಮಾನ: ಸುಗ್ಗಿಯ ನಂತರ ಹೊಲದ ಸೆಕೆಯನ್ನು ತಕ್ಷಣವೇ ಕಡಿಮೆ ಮಾಡಿ, ತಾಪಮಾನವನ್ನು 10°C–15°C ನಡುವೆ ಕಾಪಾಡಿಕೊಳ್ಳಿ.",
+            "ಕ್ರೇಟಿಂಗ್ ಮತ್ತು ಸುರಕ್ಷಿತ ಜೋಡಣೆ: ಗಾಳಿಯಾಡುವ ಗಟ್ಟಿಮುಟ್ಟಾದ ಕ್ರೇಟ್‌ಗಳನ್ನು ಬಳಸಿ, ತಳಭಾಗದ ಹಣ್ಣುಗಳು ಜಜ್ಜದಂತೆ ಜೋಡಿಸಿ.",
+            "ವಾತಾಯನ ಮತ್ತು ಗಾಳಿಯ ಚಲನೆ: ಶಾಖ ಮತ್ತು ಇಂಗಾಲದ ಡೈಆಕ್ಸೈಡ್ ಸಂಗ್ರಹವಾಗದಂತೆ ನಿರಂತರ ಗಾಳಿಯಾಡುವಂತೆ ನೋಡಿಕೊಳ್ಳಿ.",
+            f"ಸಾರಿಗೆ ರಕ್ಷಣೆ: {road_condition} ರಸ್ತೆಯ ಸಾಗಾಟದಲ್ಲಿ ಗಾಯವಾಗದಂತೆ ವಾಹನದಲ್ಲಿ ಸೂಕ್ತ ಮೆತ್ತನೆ ಬಳಸಿ."
+        ],
+        "kn_risks": [
+            f"ತಾಪಮಾನ ಒತ್ತಡ: ಪ್ರಸ್ತುತ {temperature:.1f}°C ತಾಪಮಾನವು ಬೆಳೆಯ ಉಸಿರಾಟವನ್ನು ಹೆಚ್ಚಿಸುತ್ತದೆ.",
+            f"ರಸ್ತೆ ಕಂಪನ ಹಾನಿ: {road_condition} ರಸ್ತೆಯಲ್ಲಿನ ಕಂಪನಗಳಿಂದ ಸಿಪ್ಪೆಗೆ ಹಾನಿಯಾಗಬಹುದು."
+        ]
+    })
+
+    kn_crop = prof["kn_name"]
+    kn_risk_map = {"HIGH": "ಅತಿ ಹೆಚ್ಚು", "MEDIUM": "ಮಧ್ಯಮ", "LOW": "ಕಡಿಮೆ"}
+    kn_risk = kn_risk_map.get(risk_level, risk_level)
+    kn_harvest_status = "ಇಂದೇ ಕಟಾವು ಮಾಡಲಾಗಿದೆ (ದಿನ 0)" if storage_days == 0 else f"ಕಟಾವಿನ ನಂತರ {storage_days} ದಿನಗಳು ಕಳೆದಿವೆ"
+
+    en_advisory = f"""Post-Harvest AI Advisory for {crop}
+
+Your {crop.lower()} shipment is currently in {risk_level} risk status ({prob_pct:.1f}% spoilage probability, estimated volume loss: {loss_val:.1f}%), {harvest_status}. Following tailored cold-chain handling will safeguard ₹{financial_loss:,.0f} in crop equity and extend marketability.
+
+Actionable Handling Guidelines:
+""" + "\n".join([f"- {g}" for g in prof["guidelines"]]) + f"""
+
+Critical Risk Factors & Degradation Triggers:
+""" + "\n".join([f"- {r}" for r in prof["risks"]]) + f"""
+
+Immediate Recommendation:
+- Facility Dispatch: Route shipment directly to {facility_name} ({dist_km:.1f} km away via {road_condition}), targeting arrival within optimal transit window.
+- Cold Vault Setup: Request cold chamber set-point at {prof['temp_opt']} with {prof['rh_opt']} relative humidity; this will extend shelf life by up to {shelf_val:.1f} days.
+- Market Realization: With local mandi prices currently trading around ₹{mandi_price:.2f}/kg, staging in cold storage preserves grade-A firmness for optimal market dispatch.
+"""
+
+    kn_advisory = f"""{kn_crop} ಬೆಳೆಗಾಗಿ ಎಐ ಆಧಾರಿತ ಸುಗ್ಗಿಯ ನಂತರದ ಸಲಹೆ
+
+ನಿಮ್ಮ {kn_crop} ಫಸಲು ಪ್ರಸ್ತುತ {kn_risk} ಕೊಳೆತ ಅಪಾಯದಲ್ಲಿದೆ ({prob_pct:.1f}% ಸಂಭವನೀಯತೆ, ಅಂದಾಜು ನಷ್ಟ: {loss_val:.1f}%), {kn_harvest_status}. ಸೂಕ್ತವಾದ ಶೈತ್ಯೀಕರಣ ಮತ್ತು ಸಾಗಾಣಿಕೆ ಕ್ರಮಗಳನ್ನು ಪಾಲಿಸುವುದರಿಂದ ₹{financial_loss:,.0f} ಮೌಲ್ಯದ ಬೆಳೆ ರಕ್ಷಣೆಯಾಗುತ್ತದೆ.
+
+ಆಚರಣೆಗೆ ಯೋಗ್ಯವಾದ ನಿರ್ವಹಣಾ ಮಾರ್ಗಸೂಚಿಗಳು:
+""" + "\n".join([f"- {g}" for g in prof["kn_guidelines"]]) + f"""
+
+ಪ್ರಮುಖ ಅಪಾಯಕಾರಿ ಅಂಶಗಳು ಮತ್ತು ಹಾಳಾಗಲು ಕಾರಣಗಳು:
+""" + "\n".join([f"- {r}" for r in prof["kn_risks"]]) + f"""
+
+ತಕ್ಷಣದ ಶಿಫಾರಸು:
+- ರವಾನೆ ಮಾರ್ಗ: ನಿಮ್ಮ ಬೆಳೆಯನ್ನು ತಕ್ಷಣವೇ {facility_name} ({dist_km:.1f} km ದೂರದಲ್ಲಿದೆ, {road_condition} ಮೂಲಕ) ಗೆ ನಿಗದಿತ ಸಮಯದಲ್ಲಿ ತಲುಪಿಸಿ.
+- ಕೋಲ್ಡ್ ವಾಲ್ಟ್ ಸೆಟಪ್: ಕೋಲ್ಡ್ ರೂಮ್ ತಾಪಮಾನವನ್ನು {prof['temp_opt']} ಮತ್ತು {prof['rh_opt']} ತೇವಾಂಶದಲ್ಲಿ ಕಾಯ್ದಿರಿಸಿ, ಇದರಿಂದ ಜೀವಿತಾವಧಿ {shelf_val:.1f} ದಿನಗಳವರೆಗೆ ಹೆಚ್ಚಾಗುತ್ತದೆ.
+- ಮಾರುಕಟ್ಟೆ ಆದಾಯ: ಪ್ರಸ್ತುತ ಮಾರುಕಟ್ಟೆ ದರ ₹{mandi_price:.2f}/ಕೆಜಿ ಇರುವುದರಿಂದ, ಮುಂಜಾನೆ ಅಥವಾ ಸಂಜೆಯ ತಂಪಾದ ಸಮಯದಲ್ಲಿ ಸಾಗಾಟ ಮಾಡುವುದರಿಂದ ಬೆಳೆಯ ಗುಣಮಟ್ಟ ಮತ್ತು ಗರಿಷ್ಠ ಲಾಭ ಖಚಿತವಾಗುತ್ತದೆ.
+"""
+
+    return en_advisory.strip(), kn_advisory.strip()
+
+
 @router.post("/", response_model=PredictionResponse, status_code=201)
 def create_prediction(
     payload: PredictionCreate,
@@ -280,11 +543,20 @@ def create_prediction(
     current_speed = speed_map.get(payload.road_condition, 40.0)
     vibration_idx = vibration_map.get(payload.road_condition, 1.0)
 
+    # For same-day harvest (storage_days == 0), transit is current/on-schedule
+    eff_actual_transit = payload.actual_transit_days
+    eff_expected_transit = payload.expected_transit_days
+    if payload.storage_days == 0:
+        eff_actual_transit = min(eff_actual_transit, 1.0)
+        eff_expected_transit = max(eff_expected_transit, eff_actual_transit)
+    elif eff_expected_transit <= 0:
+        eff_expected_transit = 1.0
+
     hei = (payload.temperature * (
-        payload.storage_days + (payload.actual_transit_days * (vibration_idx - 1.0))
+        payload.storage_days + (eff_actual_transit * (vibration_idx - 1.0))
     )) * respiration_acc
     hl = payload.humidity * payload.storage_days
-    tdr = payload.actual_transit_days / payload.expected_transit_days
+    tdr = eff_actual_transit / eff_expected_transit if eff_expected_transit > 0 else 1.0
     mci = payload.arrival_volume / payload.avg_market_volume
     sri = SRI_MONTHLY.get(month, 0.5)
 
@@ -294,11 +566,12 @@ def create_prediction(
     price_vol_index = 1.0
 
     try:
+        target_crop = CROP_MODEL_MAPPING.get(payload.crop, payload.crop)
         try:
-            c_enc = artifacts['le_crop'].transform([payload.crop])[0]
+            c_enc = artifacts['le_crop'].transform([target_crop])[0]
         except ValueError:
             # Fallback for unseen crops in the original model
-            c_enc = artifacts['le_crop'].transform(["Tomato"])[0]
+            c_enc = artifacts['le_crop'].transform(["Capsicum"])[0]
             
         d_enc = artifacts['le_district'].transform([payload.district])[0]
         X_raw = np.array([[
@@ -310,8 +583,9 @@ def create_prediction(
         shelf_val = max(0.0, float(artifacts['shelf_regressor'].predict(X_scaled)[0]))
         
         if payload.picture_spoilage_prob is not None:
-            # Ensure the final probability reflects visible spoilage if it's high
-            prob_val = max(prob_val, payload.picture_spoilage_prob)
+            # Reflect visible spoilage if detected from image
+            if payload.picture_spoilage_prob > prob_val:
+                prob_val = max(prob_val, payload.picture_spoilage_prob)
             prob_val = max(0.0, min(1.0, prob_val))
             
     except Exception as e:
@@ -328,8 +602,8 @@ def create_prediction(
         temperature=payload.temperature,
         humidity=payload.humidity,
         road_condition=payload.road_condition,
-        actual_transit_days=payload.actual_transit_days,
-        expected_transit_days=payload.expected_transit_days,
+        actual_transit_days=eff_actual_transit,
+        expected_transit_days=eff_expected_transit,
         storage_days=payload.storage_days,
         quantity_tons=payload.quantity_tons,
         arrival_volume=payload.arrival_volume,
@@ -364,167 +638,26 @@ def create_prediction(
     # Convert prediction to dict and add top_facilities and mock transcripts
     resp_data = PredictionResponse.model_validate(prediction).model_dump()
     resp_data["top_facilities"] = top_facilities_dicts
-    
-    crop_insights = {
-        "Tomato": {
-            "advice": "Ensure tomatoes are packed in well-ventilated crates. Avoid stacking more than 3 layers to prevent crushing.",
-            "worsen": "Excessive humidity combined with high temperatures causes rapid fungal rot. Rough roads cause skin punctures leading to oozing."
-        },
-        "Onion": {
-            "advice": "Keep onions completely dry. Use mesh bags for maximum air circulation and ensure necks are cured.",
-            "worsen": "High humidity (>70%) is fatal for onions, triggering neck rot and sprouting. Trapped moisture causes rapid decay."
-        },
-        "Potato": {
-            "advice": "Store in cool, dark environments to prevent greening. Ensure tubers are completely dry before loading.",
-            "worsen": "Temperatures above 20°C combined with poor ventilation induce rapid sprouting and tuber rot."
-        },
-        "Cucumber": {
-            "advice": "Maintain high relative humidity to prevent shriveling, but do not drop temperatures below 10°C to avoid chilling injury.",
-            "worsen": "Storing alongside ethylene-producing crops (like tomatoes) accelerates yellowing and decay."
-        }
-    }
-    
-    crop_risk_factors = {
-        "Tomato": {
-            "delay": f"The transit time of {payload.actual_transit_days} days (ideal: {payload.expected_transit_days}) drastically increases the risk of over-ripening and softening.",
-            "climate": f"Temperatures of {payload.temperature}°C combined with {payload.humidity}% humidity create a perfect environment for fungal pathogens like Alternaria to thrive on the tomato skin.",
-            "vibration": f"Transport over {payload.road_condition} subjects tomatoes to continuous vibration, causing internal bruising and surface punctures."
-        },
-        "Onion": {
-            "delay": f"Extended transit of {payload.actual_transit_days} days (ideal: {payload.expected_transit_days}) prolongs exposure to enclosed air, accelerating sprouting.",
-            "climate": f"At {payload.humidity}% humidity and {payload.temperature}°C, onions are highly susceptible to moisture accumulation which triggers neck rot and black mold.",
-            "vibration": f"Traveling on {payload.road_condition} can scrape off protective outer scales, exposing the inner onion bulbs to pathogens."
-        },
-        "Potato": {
-            "delay": f"A transit time of {payload.actual_transit_days} days exceeds the optimal {payload.expected_transit_days} days, risking early sprouting if ventilation is poor.",
-            "climate": f"Exposure to {payload.temperature}°C and {payload.humidity}% humidity significantly accelerates tuber respiration, leading to weight loss and potential late blight.",
-            "vibration": f"Bouncing on a {payload.road_condition} can cause skinning and shatter bruises on potatoes, lowering market value."
-        },
-        "Cucumber": {
-            "delay": f"An actual transit of {payload.actual_transit_days} days (ideal: {payload.expected_transit_days}) leads to rapid water loss and loss of crunchiness in cucumbers.",
-            "climate": f"Exposure to {payload.temperature}°C and {payload.humidity}% humidity rapidly accelerates yellowing and shriveling, as cucumbers lose moisture easily.",
-            "vibration": f"Transport via {payload.road_condition} causes friction and compression, leading to water-soaked pitting on the cucumber skin."
-        }
-    }
-    
-    specific_insight = crop_insights.get(payload.crop, {
-        "advice": "Ensure proper ventilation and temperature control during transit.",
-        "worsen": "Fluctuations in temperature and physical impact during transit rapidly accelerate spoilage."
-    })
 
-    risk = crop_risk_factors.get(payload.crop, {
-        "delay": f"Actual transit of {payload.actual_transit_days} days exceeds the ideal {payload.expected_transit_days} days.",
-        "climate": f"Exposure to {payload.temperature}°C and {payload.humidity}% humidity accelerates degradation.",
-        "vibration": f"{payload.road_condition} contributes significantly to mechanical damage during transport."
-    })
-
-    # Generate generic advisory text if Gemini is not hooked up here
-    en_text = (
-        f"Post-Harvest AI Advisory for {payload.crop}\n\n"
-        f"Based on our predictive matrix, your {payload.crop} shipment faces a {risk_level} risk of spoilage, "
-        f"with an estimated volume loss of {loss_val:.1f}%.\n\n"
-        f"Actionable Handling Guidelines:\n"
-        f"- {specific_insight['advice']}\n\n"
-        f"Critical Risk Factors & Degradation Triggers:\n"
-        f"- Logistics Delay: {risk['delay']}\n"
-        f"- Climate Stress: {risk['climate']}\n"
-        f"- Vibration Damage: {risk['vibration']}\n"
-        f"- Crop Vulnerability: {specific_insight['worsen']}\n\n"
-        f"Immediate Recommendation:\n"
-        f"Route your shipment to {facility_name} ({dist_km:.1f} km away). "
-        f"Booking this slot will stabilize temperatures and extend shelf life by up to {shelf_val:.1f} days, minimizing financial loss."
+    en_text, kn_text = generate_dynamic_advisories(
+        crop=payload.crop,
+        district=payload.district,
+        storage_days=payload.storage_days,
+        actual_transit_days=eff_actual_transit,
+        expected_transit_days=eff_expected_transit,
+        temperature=payload.temperature,
+        humidity=payload.humidity,
+        road_condition=payload.road_condition,
+        risk_level=risk_level,
+        loss_val=loss_val,
+        prob_val=prob_val,
+        shelf_val=shelf_val,
+        financial_loss=financial_loss,
+        facility_name=facility_name,
+        dist_km=dist_km,
+        mandi_price=mandi_price,
     )
-    
-    kn_crop_map = {
-        "Tomato": "ಟೊಮೆಟೊ",
-        "Onion": "ಈರುಳ್ಳಿ",
-        "Cucumber": "ಸೌತೆಕಾಯಿ",
-        "Potato": "ಆಲೂಗಡ್ಡೆ"
-    }
-    kn_risk_map = {
-        "HIGH": "ಅತಿ ಹೆಚ್ಚು",
-        "MEDIUM": "ಮಧ್ಯಮ",
-        "LOW": "ಕಡಿಮೆ"
-    }
-    kn_road_map = {
-        "National Highway": "ರಾಷ್ಟ್ರೀಯ ಹೆದ್ದಾರಿ",
-        "State Highway": "ರಾಜ್ಯ ಹೆದ್ದಾರಿ",
-        "Rural / Unpaved Road": "ಗ್ರಾಮೀಣ / ಕಚ್ಚಾ ರಸ್ತೆ"
-    }
-    
-    kn_crop = kn_crop_map.get(payload.crop, payload.crop)
-    kn_risk = kn_risk_map.get(risk_level, risk_level)
-    kn_road = kn_road_map.get(payload.road_condition, payload.road_condition)
-    
-    kn_crop_insights = {
-        "Tomato": {
-            "advice": "ಟೊಮೆಟೊಗಳನ್ನು ಗಾಳಿಯಾಡುವ ಕ್ರೇಟ್‌ಗಳಲ್ಲಿ ಪ್ಯಾಕ್ ಮಾಡಿ. 3 ಕ್ಕಿಂತ ಹೆಚ್ಚು ಲೇಯರ್‌ಗಳನ್ನು ಪೇರಿಸಬೇಡಿ.",
-            "worsen": "ಹೆಚ್ಚಿನ ಆರ್ದ್ರತೆ ಮತ್ತು ಉಷ್ಣಾಂಶದಿಂದ ಫಂಗಲ್ ಕೊಳೆತ ವೇಗಗೊಳ್ಳುತ್ತದೆ."
-        },
-        "Onion": {
-            "advice": "ಈರುಳ್ಳಿಯನ್ನು ಸಂಪೂರ್ಣವಾಗಿ ಒಣಗಿಸಿ. ಗಾಳಿಯಾಡುವ ಮೆಶ್ ಬ್ಯಾಗ್‌ಗಳನ್ನು ಬಳಸಿ.",
-            "worsen": "70% ಕ್ಕಿಂತ ಹೆಚ್ಚಿನ ಆರ್ದ್ರತೆಯು ಈರುಳ್ಳಿಗೆ ಮಾರಕವಾಗಿದೆ, ಇದರಿಂದ ಕೊಳೆಯುವಿಕೆ ವೇಗಗೊಳ್ಳುತ್ತದೆ."
-        },
-        "Potato": {
-            "advice": "ಆಲೂಗಡ್ಡೆಯನ್ನು ತಂಪಾದ, ಕತ್ತಲೆಯಾದ ಸ್ಥಳದಲ್ಲಿ ಸಂಗ್ರಹಿಸಿ. ಲೋಡ್ ಮಾಡುವ ಮೊದಲು ಸಂಪೂರ್ಣವಾಗಿ ಒಣಗಿಸಿ.",
-            "worsen": "20°C ಕ್ಕಿಂತ ಹೆಚ್ಚಿನ ತಾಪಮಾನವು ಮೊಳಕೆಯೊಡೆಯುವಿಕೆ ಮತ್ತು ಕೊಳೆಯುವಿಕೆಗೆ ಕಾರಣವಾಗುತ್ತದೆ."
-        },
-        "Cucumber": {
-            "advice": "ಸೌತೆಕಾಯಿ ಒಣಗುವುದನ್ನು ತಪ್ಪಿಸಲು ಹೆಚ್ಚಿನ ಆರ್ದ್ರತೆ ಕಾಯ್ದುಕೊಳ್ಳಿ, ಆದರೆ 10°C ಗಿಂತ ಕಡಿಮೆ ಮಾಡಬೇಡಿ.",
-            "worsen": "ಟೊಮೆಟೊ ಅಥವಾ ಬಾಳೆಹಣ್ಣುಗಳೊಂದಿಗೆ ಸಂಗ್ರಹಿಸುವುದರಿಂದ ಬೇಗನೆ ಹಳದಿಯಾಗುತ್ತದೆ."
-        }
-    }
-    
-    kn_crop_risk_factors = {
-        "Tomato": {
-            "delay": f"ನಿರೀಕ್ಷಿತ {payload.expected_transit_days} ದಿನಗಳ ಬದಲಿಗೆ {payload.actual_transit_days} ದಿನಗಳ ಸಾಗಾಟವು ಟೊಮೆಟೊ ಹಣ್ಣಾಗುವಿಕೆ ಮತ್ತು ಮೆತ್ತಗಾಗುವಿಕೆಯನ್ನು ಹೆಚ್ಚಿಸುತ್ತದೆ.",
-            "climate": f"{payload.temperature}°C ಉಷ್ಣಾಂಶ ಮತ್ತು {payload.humidity}% ಆರ್ದ್ರತೆಯು ಟೊಮೆಟೊ ಸಿಪ್ಪೆಯ ಮೇಲೆ ಫಂಗಲ್ ರೋಗಕಾರಕಗಳು (ಆಲ್ಟರ್ನೇರಿಯಾ) ಬೆಳೆಯಲು ಕಾರಣವಾಗುತ್ತದೆ.",
-            "vibration": f"{kn_road} ರಸ್ತೆಯಲ್ಲಿನ ನಿರಂತರ ಕಂಪನವು ಟೊಮೆಟೊಗೆ ಆಂತರಿಕ ಗಾಯ ಮತ್ತು ಸಿಪ್ಪೆಗೆ ಹಾನಿಯನ್ನು ಉಂಟುಮಾಡುತ್ತದೆ."
-        },
-        "Onion": {
-            "delay": f"{payload.actual_transit_days} ದಿನಗಳ ಸಾಗಾಟವು (ಆದರ್ಶ: {payload.expected_transit_days}) ಈರುಳ್ಳಿ ಮೊಳಕೆಯೊಡೆಯುವಿಕೆಯನ್ನು ವೇಗಗೊಳಿಸುತ್ತದೆ.",
-            "climate": f"{payload.humidity}% ಆರ್ದ್ರತೆ ಮತ್ತು {payload.temperature}°C ಯಲ್ಲಿ, ತೇವಾಂಶವು ಕತ್ತಿನ ಕೊಳೆತ ಮತ್ತು ಕಪ್ಪು ಅಚ್ಚನ್ನು ಪ್ರಚೋದಿಸುತ್ತದೆ.",
-            "vibration": f"{kn_road} ರಸ್ತೆಯ ಸಾಗಾಟವು ರಕ್ಷಣಾತ್ಮಕ ಹೊರ ಪದರವನ್ನು ಕೆರೆದು ಒಳ ಪದರಕ್ಕೆ ಹಾನಿ ಮಾಡುತ್ತದೆ."
-        },
-        "Potato": {
-            "delay": f"{payload.actual_transit_days} ದಿನಗಳ ಸಾಗಾಟವು (ಆದರ್ಶ: {payload.expected_transit_days}) ಕಳಪೆ ವಾತಾಯನದಲ್ಲಿ ಬೇಗನೆ ಮೊಳಕೆಯೊಡೆಯುವಿಕೆಯನ್ನು ಉಂಟುಮಾಡುತ್ತದೆ.",
-            "climate": f"{payload.temperature}°C ಉಷ್ಣಾಂಶ ಮತ್ತು {payload.humidity}% ಆರ್ದ್ರತೆಯು ಗೆಡ್ಡೆಯ ಉಸಿರಾಟವನ್ನು ವೇಗಗೊಳಿಸಿ ತೂಕ ನಷ್ಟಕ್ಕೆ ಕಾರಣವಾಗುತ್ತದೆ.",
-            "vibration": f"{kn_road} ರಸ್ತೆಯಲ್ಲಿನ ಬಡಿತದಿಂದ ಆಲೂಗಡ್ಡೆಯ ಸಿಪ್ಪೆ ಸುಲಿಯುತ್ತದೆ, ಇದು ಮಾರುಕಟ್ಟೆ ಮೌಲ್ಯವನ್ನು ಕಡಿಮೆ ಮಾಡುತ್ತದೆ."
-        },
-        "Cucumber": {
-            "delay": f"{payload.actual_transit_days} ದಿನಗಳ ವಿಳಂಬವು (ಆದರ್ಶ: {payload.expected_transit_days}) ಸೌತೆಕಾಯಿಯ ನೀರಿನ ನಷ್ಟಕ್ಕೆ ಕಾರಣವಾಗುತ್ತದೆ.",
-            "climate": f"{payload.temperature}°C ಉಷ್ಣಾಂಶ ಮತ್ತು {payload.humidity}% ಆರ್ದ್ರತೆಯು ತೇವಾಂಶ ನಷ್ಟ ಮತ್ತು ಹಳದಿಯಾಗುವಿಕೆಯನ್ನು ವೇಗಗೊಳಿಸುತ್ತದೆ.",
-            "vibration": f"{kn_road} ರಸ್ತೆಯ ಸಾಗಾಟವು ಸೌತೆಕಾಯಿಯ ಸಿಪ್ಪೆಯ ಮೇಲೆ ಗುಳಿ ಬೀಳುವಿಕೆಯನ್ನು ಉಂಟುಮಾಡುತ್ತದೆ."
-        }
-    }
-    
-    kn_insight = kn_crop_insights.get(payload.crop, {
-        "advice": "ಸಾಗಾಟದ ಸಮಯದಲ್ಲಿ ಸರಿಯಾದ ವಾತಾಯನ ಮತ್ತು ತಾಪಮಾನ ನಿಯಂತ್ರಣವನ್ನು ಖಚಿತಪಡಿಸಿಕೊಳ್ಳಿ.",
-        "worsen": "ತಾಪಮಾನದ ಏರುಪೇರು ಮತ್ತು ಸಾಗಾಟದ ಸಮಯದಲ್ಲಿನ ಹೊಡೆತಗಳು ಕೊಳೆಯುವಿಕೆಯನ್ನು ವೇಗಗೊಳಿಸುತ್ತವೆ."
-    })
 
-    kn_risk_msg = kn_crop_risk_factors.get(payload.crop, {
-        "delay": f"ನಿರೀಕ್ಷಿತ {payload.expected_transit_days} ದಿನಗಳ ಬದಲಿಗೆ {payload.actual_transit_days} ದಿನಗಳ ಸಾಗಾಟ.",
-        "climate": f"{payload.temperature}°C ಉಷ್ಣಾಂಶ ಮತ್ತು {payload.humidity}% ಆರ್ದ್ರತೆ ಬೆಳೆ ಹಾಳಾಗುವಿಕೆಯನ್ನು ವೇಗಗೊಳಿಸುತ್ತದೆ.",
-        "vibration": f"{kn_road} ರಸ್ತೆಯಲ್ಲಿನ ಕಂಪನಗಳಿಂದ ಯಾಂತ್ರಿಕ ಹಾನಿ ಉಂಟಾಗುತ್ತದೆ."
-    })
-
-    kn_text = (
-        f"{kn_crop} ಬೆಳೆಗಾಗಿ ಎಐ ಆಧಾರಿತ ಸಲಹೆ\n\n"
-        f"ನಮ್ಮ ವಿಶ್ಲೇಷಣೆಯ ಪ್ರಕಾರ, ನಿಮ್ಮ {kn_crop} ಬೆಳೆಯು {kn_risk} ಕೊಳೆಯುವ ಅಪಾಯದಲ್ಲಿದೆ ಮತ್ತು "
-        f"ಅಂದಾಜು {loss_val:.1f}% ನಷ್ಟ ಉಂಟಾಗುವ ಸಾಧ್ಯತೆ ಇದೆ.\n\n"
-        f"ತೆಗೆದುಕೊಳ್ಳಬೇಕಾದ ಕ್ರಮಗಳು:\n"
-        f"- {kn_insight['advice']}\n\n"
-        f"ಮುಖ್ಯ ಕಾರಣಗಳು ಮತ್ತು ಅಪಾಯಗಳು:\n"
-        f"- ಸಾರಿಗೆ ವಿಳಂಬ: {kn_risk_msg['delay']}\n"
-        f"- ಹವಾಮಾನ ಪ್ರಭಾವ: {kn_risk_msg['climate']}\n"
-        f"- ರಸ್ತೆ ಹಾನಿ: {kn_risk_msg['vibration']}\n"
-        f"- ಬೆಳೆಯ ದುರ್ಬಲತೆ: {kn_insight['worsen']}\n\n"
-        f"ತ್ವರಿತ ಶಿಫಾರಸು:\n"
-        f"ನಿಮ್ಮ ಬೆಳೆಯನ್ನು ತಕ್ಷಣವೇ {facility_name} ({dist_km:.1f} km ದೂರದಲ್ಲಿದೆ) ಗೆ ಕಳುಹಿಸಿ. "
-        f"ಇಲ್ಲಿ ತಾಪಮಾನ ನಿಯಂತ್ರಣದಿಂದ ಬೆಳೆಯ ಜೀವಿತಾವಧಿ {shelf_val:.1f} ದಿನಗಳವರೆಗೆ ಹೆಚ್ಚಾಗುತ್ತದೆ."
-    )
-    
     resp_data["advisory_transcript_en"] = en_text
     resp_data["advisory_transcript_kn"] = kn_text
 

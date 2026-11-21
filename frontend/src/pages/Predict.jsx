@@ -235,8 +235,8 @@ const Prediction = () => {
     temperature: 25.0,
     humidity: 60.0,
     road_condition: 'National Highway',
-    actual_transit_days: 3.0,
-    expected_transit_days: 1.5,
+    actual_transit_days: 1.0,
+    expected_transit_days: 1.0,
     harvest_date: new Date().toISOString().split('T')[0],
     quantity_tons: ''
   });
@@ -607,11 +607,17 @@ const Prediction = () => {
       // 1. Submit Prediction
       const prob = imageAnalysis ? imageAnalysis.rotten_pct / 100 : null;
       
-      // Calculate storage days
-      const hDate = new Date(formData.harvest_date);
+      // Calculate storage days accurately based on calendar date difference
       const today = new Date();
-      const diffTime = Math.abs(today - hDate);
-      const storageDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      today.setHours(0, 0, 0, 0);
+      let storageDays = 0;
+      if (formData.harvest_date) {
+        const [y, m, d] = formData.harvest_date.split('-').map(Number);
+        const hDate = new Date(y, m - 1, d);
+        hDate.setHours(0, 0, 0, 0);
+        const diffMs = today.getTime() - hDate.getTime();
+        storageDays = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+      }
       
       // Compress and convert image file to base64 if it exists (capped to 800x800 JPEG 0.7)
       let base64Image = null;
@@ -619,12 +625,18 @@ const Prediction = () => {
         base64Image = await compressImageToBase64(imageFile);
       }
       
+      // Same-day harvest transit is current/on-schedule
+      const parsedActual = Number.parseFloat(formData.actual_transit_days) || 1.0;
+      const parsedExpected = Number.parseFloat(formData.expected_transit_days) || 1.0;
+      const actualTransit = storageDays === 0 ? Math.min(parsedActual, 1.0) : parsedActual;
+      const expectedTransit = storageDays === 0 ? Math.max(parsedExpected, actualTransit) : parsedExpected;
+
       const payload = {
         ...formData,
         temperature: Number.parseFloat(formData.temperature) || 25.0,
         humidity: Number.parseFloat(formData.humidity) || 60.0,
-        actual_transit_days: Number.parseFloat(formData.actual_transit_days) || 1.0,
-        expected_transit_days: Number.parseFloat(formData.expected_transit_days) || 1.0,
+        actual_transit_days: actualTransit,
+        expected_transit_days: expectedTransit,
         storage_days: Number.isNaN(storageDays) ? 0 : storageDays,
         quantity_tons: Number.parseFloat(formData.quantity_tons),
         picture_spoilage_prob: prob,
@@ -660,8 +672,8 @@ const Prediction = () => {
       temperature: weatherData?.temp || 25.0,
       humidity: weatherData?.humidity || 60.0,
       road_condition: 'National Highway',
-      actual_transit_days: 3.0,
-      expected_transit_days: 1.5,
+      actual_transit_days: 1.0,
+      expected_transit_days: 1.0,
       harvest_date: new Date().toISOString().split('T')[0],
       quantity_tons: ''
     });
