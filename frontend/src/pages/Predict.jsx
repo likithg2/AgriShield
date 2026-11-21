@@ -296,6 +296,15 @@ const Prediction = () => {
   const [animatedSpoilageProb, setAnimatedSpoilageProb] = useState(0);
   const [routeCoordinates, setRouteCoordinates] = useState([]);
   const [loadingRoute, setLoadingRoute] = useState(false);
+  const [selectedFacilityIdx, setSelectedFacilityIdx] = useState(0);
+  const [activeLang, setActiveLang] = useState('en');
+  const [isBooking, setIsBooking] = useState(false);
+  const [bookingMode, setBookingMode] = useState('random');
+  const [vehicleReg, setVehicleReg] = useState('');
+  const [bookingDetails, setBookingDetails] = useState(null);
+  const [showBookingConfirm, setShowBookingConfirm] = useState(false);
+  const [bookingTarget, setBookingTarget] = useState('');
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState(null);
 
   // Fetch actual driving road navigation route from OSRM
   useEffect(() => {
@@ -390,15 +399,6 @@ const Prediction = () => {
     }
   }, [predictionResult]);
 
-  const [activeLang, setActiveLang] = useState('en');
-  const [isBooking, setIsBooking] = useState(false);
-  const [selectedFacilityIdx, setSelectedFacilityIdx] = useState(0);
-  const [bookingMode, setBookingMode] = useState('random');
-  const [vehicleReg, setVehicleReg] = useState('');
-  const [bookingDetails, setBookingDetails] = useState(null);
-  const [showBookingConfirm, setShowBookingConfirm] = useState(false);
-  const [bookingTarget, setBookingTarget] = useState('');
-  const [selectedWarehouseId, setSelectedWarehouseId] = useState(null);
 
   useEffect(() => {
     setIsBooking(false);
