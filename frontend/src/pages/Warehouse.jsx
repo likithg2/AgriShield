@@ -672,8 +672,7 @@ const Warehouse = () => {
                   placeholder="Search by facility or district..." 
                   value={crossConnectSearch}
                   onChange={(e) => { setCrossConnectSearch(e.target.value); setCrossConnectPage(1); }}
-                  className="input-field py-1.5 text-sm w-full sm:w-[320px] md:w-[400px] bg-background/50"
-                  style={{ paddingLeft: '2.5rem' }}
+                  className="input-field py-1.5 pl-10 text-sm w-full sm:w-[320px] md:w-[400px] bg-background/50"
                 />
               </div>
             </div>

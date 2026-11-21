@@ -118,8 +118,7 @@ const WarehouseLogs = () => {
                 placeholder="Search logs..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="input-field py-1.5 text-sm w-full sm:w-[220px] bg-background/50"
-                style={{ paddingLeft: '2.5rem' }}
+                className="input-field py-1.5 pl-10 text-sm w-full sm:w-[220px] bg-background/50"
               />
             </div>
             <div className="relative">
@@ -127,8 +126,7 @@ const WarehouseLogs = () => {
               <select 
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="input-field py-1.5 text-sm w-full sm:w-auto bg-background/50 dark:bg-black/90 dark:text-white appearance-none"
-                style={{ paddingLeft: '2.5rem' }}
+                className="input-field py-1.5 pl-10 text-sm w-full sm:w-auto bg-background/50 dark:bg-black/90 dark:text-white appearance-none"
               >
                 <option value="">All Statuses</option>
                 <option value="In Transit">In Transit</option>
