@@ -343,7 +343,7 @@ const Prediction = () => {
       }
     };
 
-    fetchRoadRoute().finally(() => {
+    void fetchRoadRoute().finally(() => {
       if (isMounted) setLoadingRoute(false);
     });
 
