@@ -1200,21 +1200,27 @@ const Prediction = () => {
                       />
                   </div>
                   
-                  <div className="space-y-4">
-                    <div className="bg-background/40 p-4 rounded-xl border border-white/5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div className="bg-background/40 p-3.5 rounded-xl border border-white/5 flex flex-col justify-center">
                       <div className="text-xs text-text-muted uppercase tracking-wider mb-1">Risk Level</div>
-                      <div className={`text-2xl font-bold ${
+                      <div className={`text-xl sm:text-2xl font-bold ${
                         predictionResult.risk_level === 'HIGH' ? 'text-red-500' : 
                         predictionResult.risk_level === 'MEDIUM' ? 'text-orange-500' : 'text-green-500'
                       }`}>{predictionResult.risk_level}</div>
                     </div>
-                    <div className="bg-background/40 p-4 rounded-xl border border-white/5">
-                      <div className="text-xs text-text-muted uppercase tracking-wider mb-1">Qty Loss (Tons)</div>
-                      <div className="text-2xl font-bold">{((predictionResult.loss_percentage / 100) * formData.quantity_tons).toFixed(2)} T</div>
+                    <div className="bg-background/40 p-3.5 rounded-xl border border-white/5 flex flex-col justify-center">
+                      <div className="text-xs text-text-muted uppercase tracking-wider mb-1">Remaining Shelf Life</div>
+                      <div className="text-xl sm:text-2xl font-bold text-emerald-400">
+                        {predictionResult.shelf_life_days != null ? `${predictionResult.shelf_life_days.toFixed(1)} Days` : 'N/A'}
+                      </div>
                     </div>
-                    <div className="bg-background/40 p-4 rounded-xl border border-white/5">
+                    <div className="bg-background/40 p-3.5 rounded-xl border border-white/5 flex flex-col justify-center">
+                      <div className="text-xs text-text-muted uppercase tracking-wider mb-1">Qty Loss (Tons)</div>
+                      <div className="text-xl sm:text-2xl font-bold">{((predictionResult.loss_percentage / 100) * formData.quantity_tons).toFixed(2)} T</div>
+                    </div>
+                    <div className="bg-background/40 p-3.5 rounded-xl border border-white/5 flex flex-col justify-center">
                       <div className="text-xs text-text-muted uppercase tracking-wider mb-1">Est. Financial Loss</div>
-                      <div className="text-2xl font-bold text-red-400">~ ₹{Math.round(predictionResult.financial_loss).toLocaleString()}</div>
+                      <div className="text-xl sm:text-2xl font-bold text-red-400">~ ₹{Math.round(predictionResult.financial_loss).toLocaleString()}</div>
                     </div>
                   </div>
                 </div>
