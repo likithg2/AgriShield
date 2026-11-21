@@ -1,5 +1,5 @@
 import React, { useState, useContext, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Leaf, Lock, Mail, ArrowRight, Eye, EyeOff, ShieldAlert } from 'lucide-react';
 import GlassCard from '../components/GlassCard';
 import Button from '../components/Button';
@@ -44,13 +44,15 @@ const Login = () => {
   const [successMsg, setSuccessMsg] = useState('');
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from?.pathname || '/dashboard';
   const { user, login } = useContext(AuthContext);
 
   useEffect(() => {
     if (user) {
-      navigate('/dashboard', { replace: true });
+      navigate(from, { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, navigate, from]);
 
   const clearMessages = () => {
     setError('');
@@ -78,7 +80,7 @@ const Login = () => {
     try {
       const res = await authAPI.login(loginId, password);
       login(res.data.access_token, res.data.user);
-      navigate('/dashboard');
+      navigate(from, { replace: true });
     } catch (err) {
       setError(getErrorMessage(err, 'Login failed. Please check your credentials.'));
     } finally {
@@ -103,7 +105,7 @@ const Login = () => {
       };
       const res = await authAPI.register(data);
       login(res.data.access_token, res.data.user);
-      navigate('/dashboard');
+      navigate(from, { replace: true });
     } catch (err) {
       setError(getErrorMessage(err, 'Registration failed.'));
     } finally {
