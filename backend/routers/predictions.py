@@ -583,6 +583,7 @@ def create_prediction(
 
     current_speed = speed_map.get(payload.road_condition, 40.0)
     vibration_idx = vibration_map.get(payload.road_condition, 1.0)
+    est_transit_hours = dist_km / current_speed if current_speed > 0 else 1.0
 
     # For same-day harvest (storage_days == 0), transit is current/on-schedule
     eff_actual_transit = payload.actual_transit_days
@@ -590,21 +591,27 @@ def create_prediction(
     if payload.storage_days == 0:
         eff_actual_transit = min(eff_actual_transit, 1.0)
         eff_expected_transit = max(eff_expected_transit, eff_actual_transit)
-    elif eff_expected_transit <= 0:
-        eff_expected_transit = 1.0
+        # On Day 0, transit duration from farm is typically hours, not multi-day prolonged road vibration
+        transit_fraction = min(1.0, max(0.08, est_transit_hours / 24.0))
+        transit_vib_stress = transit_fraction * (vibration_idx - 1.0)
+        hei = payload.temperature * transit_vib_stress * respiration_acc
+    else:
+        if eff_expected_transit <= 0:
+            eff_expected_transit = 1.0
+        hei = (payload.temperature * (
+            payload.storage_days + (eff_actual_transit * (vibration_idx - 1.0))
+        )) * respiration_acc
 
-    hei = (payload.temperature * (
-        payload.storage_days + (eff_actual_transit * (vibration_idx - 1.0))
-    )) * respiration_acc
     hl = payload.humidity * payload.storage_days
     tdr = eff_actual_transit / eff_expected_transit if eff_expected_transit > 0 else 1.0
     mci = payload.arrival_volume / payload.avg_market_volume
     sri = SRI_MONTHLY.get(month, 0.5)
 
-    est_transit_hours = dist_km / current_speed if current_speed > 0 else 1.0
     total_shelf_hours = CROP_MASTER[payload.crop][0] * 24.0
     time_window_index = total_shelf_hours / (est_transit_hours + 1e-5)
     price_vol_index = 1.0
+
+    max_crop_shelf = float(CROP_MASTER[payload.crop][0])
 
     try:
         target_crop = CROP_MODEL_MAPPING.get(payload.crop, payload.crop)
@@ -622,16 +629,40 @@ def create_prediction(
         prob_val = float(artifacts['ensemble_clf'].predict_proba(X_scaled)[0][1])
         loss_val = max(0.0, float(artifacts['loss_regressor'].predict(X_scaled)[0]))
         shelf_val = max(0.0, float(artifacts['shelf_regressor'].predict(X_scaled)[0]))
+
+        # Fine-tuned physical calibration for Day 0 (Freshly Harvested produce)
+        if payload.storage_days == 0:
+            crop_perishability = CROP_MASTER[payload.crop][2]
+            base_fresh_prob = 0.015 + (0.045 * min(1.0, crop_perishability))
+            stress_factor = min(1.0, (hei / 50.0)) * 0.06
+            delay_factor = max(0.0, (tdr - 1.0)) * 0.08
+            day0_calibrated_prob = base_fresh_prob + stress_factor + delay_factor
+            
+            # Blend model context with physical day-0 ground truth (strictly Low Risk < 0.20)
+            prob_val = min(0.18, max(0.015, (0.7 * day0_calibrated_prob) + (0.3 * min(prob_val, 0.25))))
+            shelf_val = max(1.0, round(max_crop_shelf * (1.0 - (prob_val * 0.7)), 1))
+        else:
+            remaining_possible = max(0.2, max_crop_shelf - payload.storage_days)
+            shelf_val = min(remaining_possible, round(max_crop_shelf * max(0.0, 1.0 - prob_val), 1))
         
         if payload.picture_spoilage_prob is not None:
             # Reflect visible spoilage if detected from image
-            if payload.picture_spoilage_prob > prob_val:
-                prob_val = max(prob_val, payload.picture_spoilage_prob)
-            prob_val = max(0.0, min(1.0, prob_val))
+            if payload.picture_spoilage_prob >= 0.45:
+                prob_val = max(prob_val, (payload.picture_spoilage_prob * 0.85) + (prob_val * 0.15))
+            else:
+                prob_val = (prob_val * 0.8) + (min(payload.picture_spoilage_prob, 0.15) * 0.2)
+            prob_val = max(0.01, min(0.99, prob_val))
             
     except Exception as e:
         logger.warning("ML prediction inference encountered error (%s), using baseline estimates", e, exc_info=True)
-        prob_val, loss_val, shelf_val = 0.384, 4.8, 5.2
+        if payload.storage_days == 0:
+            prob_val = 0.045
+            loss_val = 1.2
+            shelf_val = round(max_crop_shelf * 0.95, 1)
+        else:
+            prob_val = 0.24
+            loss_val = 4.0
+            shelf_val = round(max(1.0, (max_crop_shelf - payload.storage_days) * 0.8), 1)
 
     risk_level = "HIGH" if prob_val > 0.6 else "MEDIUM" if prob_val > 0.3 else "LOW"
 

@@ -238,6 +238,14 @@ const compressImageToBase64 = (file, maxWidth = 800, maxHeight = 800, quality = 
   });
 };
 
+const getTodayDateString = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const Prediction = () => {
   const { user } = useContext(AuthContext);
   const { t, language } = useContext(LanguageContext);
@@ -251,7 +259,7 @@ const Prediction = () => {
     road_condition: 'National Highway',
     actual_transit_days: 1.0,
     expected_transit_days: 1.0,
-    harvest_date: new Date().toISOString().split('T')[0],
+    harvest_date: getTodayDateString(),
     quantity_tons: ''
   });
 
@@ -681,13 +689,14 @@ const Prediction = () => {
       const prob = imageAnalysis ? imageAnalysis.rotten_pct / 100 : null;
       
       // Calculate storage days accurately based on calendar date difference
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const todayStr = getTodayDateString();
       let storageDays = 0;
-      if (formData.harvest_date) {
+      if (formData.harvest_date && formData.harvest_date !== todayStr) {
         const [y, m, d] = formData.harvest_date.split('-').map(Number);
         const hDate = new Date(y, m - 1, d);
         hDate.setHours(0, 0, 0, 0);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
         const diffMs = today.getTime() - hDate.getTime();
         storageDays = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
       }
@@ -748,7 +757,7 @@ const Prediction = () => {
       road_condition: 'National Highway',
       actual_transit_days: 1.0,
       expected_transit_days: 1.0,
-      harvest_date: new Date().toISOString().split('T')[0],
+      harvest_date: getTodayDateString(),
       quantity_tons: ''
     });
   };
