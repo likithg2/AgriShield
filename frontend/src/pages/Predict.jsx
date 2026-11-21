@@ -262,6 +262,7 @@ const Prediction = () => {
   const [imagePreview, setImagePreview] = useState(null);
   const [imageAnalysis, setImageAnalysis] = useState(null);
   const [analyzingImage, setAnalyzingImage] = useState(false);
+  const [showImageAnalysisSection, setShowImageAnalysisSection] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalImageSrc, setModalImageSrc] = useState(null);
   const [barAnimated, setBarAnimated] = useState(false);
@@ -442,6 +443,7 @@ const Prediction = () => {
     
     setImageFile(file);
     setImagePreview(URL.createObjectURL(file));
+    setShowImageAnalysisSection(true);
     setAnalyzingImage(true);
     
     const formDataObj = new FormData();
@@ -736,6 +738,7 @@ const Prediction = () => {
     setImageFile(null);
     setImagePreview(null);
     setImageAnalysis(null);
+    setShowImageAnalysisSection(false);
     setError('');
     setFormData({
       crop: '',
@@ -810,130 +813,6 @@ const Prediction = () => {
         {/* INPUTS SECTION */}
         <div className="space-y-6">
           
-          {/* Vegetable Quality Analysis */}
-          <GlassCard className="p-6">
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-              <Camera className="text-primary" /> {t("Vegetable Quality Analysis")}
-            </h2>
-            <div className="space-y-4">
-              <input type="file" accept="image/*" onChange={handleImageUpload} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20" />
-              
-              {analyzingImage && <div className="text-primary animate-pulse flex items-center gap-2"><Loader className="animate-spin" size={16}/> Analyzing image with MobileNetV2...</div>}
-              
-              {imagePreview && (
-                <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center bg-background/50 p-4 rounded-xl border border-white/5">
-                  <img 
-                    src={imagePreview} 
-                    alt="Upload" 
-                    className="w-24 h-24 object-cover rounded-lg shadow-md cursor-pointer hover:opacity-80 transition-opacity shrink-0" 
-                    onClick={() => {
-                      setModalImageSrc(imagePreview);
-                      setIsModalOpen(true);
-                    }}
-                  />
-                  <AnimatePresence>
-                  {imageAnalysis && (
-                    <motion.div 
-                      className="w-full sm:flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
-                    >
-                      <motion.div 
-                        className="bg-background/40 p-3 rounded-xl border border-white/5 flex flex-col justify-center shadow-inner"
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.4, delay: 0.1 }}
-                      >
-                        <div className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Detected Crop</div>
-                        <div className="text-lg font-bold text-green-800 dark:text-green-400">{imageAnalysis.crop_name}</div>
-                      </motion.div>
-                      <motion.div 
-                        className="bg-background/40 p-3 rounded-xl border border-white/5 flex flex-col justify-center shadow-inner"
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.4, delay: 0.2 }}
-                      >
-                        <div className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Overall Quality</div>
-                        <div className={`text-lg font-bold ${imageAnalysis.quality === 'Rotten' ? 'text-red-400' : 'text-green-400'}`}>
-                          {imageAnalysis.quality}
-                        </div>
-                      </motion.div>
-                      <motion.div 
-                        className="col-span-2 bg-background/40 p-4 rounded-2xl border border-white/5 shadow-inner"
-                        initial={{ opacity: 0, y: 15 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.4, delay: 0.35 }}
-                      >
-                        <div className="w-full h-14 overflow-hidden flex" style={{ background: 'rgba(0,0,0,0.1)', borderRadius: '5px' }}>
-                          <div 
-                            className="h-full flex items-center justify-center relative"
-                            style={{
-                              width: barAnimated ? `${Math.max(imageAnalysis.fresh_pct, 18)}%` : '0%',
-                              background: 'linear-gradient(90deg, rgba(74,222,128,0.45), rgba(34,197,94,0.55))',
-                              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.35)',
-                              borderRadius: '5px 0 0 5px',
-                              transition: 'width 1.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                              overflow: 'hidden',
-                            }}
-                          >
-                            <span className="text-lg font-bold text-green-900 dark:text-green-100 drop-shadow-sm whitespace-nowrap" style={{ opacity: barAnimated ? 1 : 0, transition: 'opacity 0.5s ease 0.8s' }}>🌿 Fresh {imageAnalysis.fresh_pct.toFixed(1)}%</span>
-                          </div>
-                          <div 
-                            className="h-full flex items-center justify-center relative"
-                            style={{
-                              width: barAnimated ? `${Math.max(imageAnalysis.rotten_pct, 18)}%` : '0%',
-                              background: 'linear-gradient(90deg, rgba(248,113,113,0.45), rgba(239,68,68,0.55))',
-                              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.25)',
-                              borderRadius: '0 5px 5px 0',
-                              transition: 'width 1.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                              overflow: 'hidden',
-                            }}
-                          >
-                            <span className="text-lg font-bold text-red-900 dark:text-red-100 drop-shadow-sm whitespace-nowrap" style={{ opacity: barAnimated ? 1 : 0, transition: 'opacity 0.5s ease 0.8s' }}>⚠️ Spoilage {imageAnalysis.rotten_pct.toFixed(1)}%</span>
-                          </div>
-                        </div>
-                        <motion.div
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.4, delay: 0.9 }}
-                        >
-                        {imageAnalysis.rotten_pct > 50 ? (
-                          <div className="mt-3 flex items-start gap-3 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20">
-                            <span className="text-2xl mt-0.5">🚨</span>
-                            <p className="text-sm text-red-400 font-medium leading-snug">
-                              High spoilage detected! Move your produce to cold storage immediately to minimize losses.
-                            </p>
-                          </div>
-                        ) : imageAnalysis.rotten_pct > 25 ? (
-                          <div className="mt-3 flex items-start gap-3 px-4 py-3 rounded-xl bg-orange-500/10 border border-orange-500/20">
-                            <span className="text-2xl mt-0.5">⚡</span>
-                            <p className="text-lg text-orange-400 font-medium leading-snug">
-                              Moderate spoilage risk. Consider expediting transport to cold storage for better shelf life.
-                            </p>
-                          </div>
-                        ) : (
-                          <div className="mt-3 flex items-start gap-3 px-4 py-3 rounded-xl bg-green-500/10 border border-green-500/20">
-                            <span className="text-2xl mt-0.5">✅</span>
-                            <p className="text-base text-green-400 font-medium leading-snug">
-                              Your produce looks fresh! Store properly and transport within the recommended window.
-                            </p>
-                          </div>
-                        )}
-                        <Button type="button" onClick={handleReset} variant="outline" className="mt-4 w-full flex items-center justify-center gap-2">
-                          <RotateCcw className="w-4 h-4" />
-                          {t("New Prediction")}
-                        </Button>
-                        </motion.div>
-                      </motion.div>
-                    </motion.div>
-                  )}
-                  </AnimatePresence>
-                </div>
-              )}
-            </div>
-          </GlassCard>
-
           {/* Voice Input */}
           <GlassCard className="p-6 bg-gradient-to-br from-primary/5 to-transparent border border-primary/20">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
@@ -1066,8 +945,187 @@ const Prediction = () => {
                   <input id="predict-humidity-input" type="number" step="0.1" name="humidity" value={formData.humidity} onChange={handleChange} className="input-field bg-primary/5 w-full" />
                 </div>
                 <div className="col-span-1 sm:col-span-2">
-                  <label htmlFor="predict-spoilage-prob-input" className="text-xs text-text-muted font-medium mb-1 block">Picture Spoilage Prob</label>
-                  <input id="predict-spoilage-prob-input" type="text" disabled value={imageAnalysis ? imageAnalysis.rotten_pct.toFixed(1) + '%' : 'Not Analyzed'} className="input-field bg-primary/5 w-full opacity-70" />
+                  <div className="flex justify-between items-center mb-1">
+                    <label htmlFor="predict-spoilage-prob-input" className="text-xs text-text-muted font-medium">
+                      Picture Spoilage Prob
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowImageAnalysisSection(prev => !prev)}
+                      className="text-xs text-primary font-semibold flex items-center gap-1 hover:underline cursor-pointer"
+                    >
+                      <Camera size={13} />
+                      {showImageAnalysisSection ? t("Hide Analysis Panel") : t("Vegetable Quality Analysis")}
+                    </button>
+                  </div>
+                  
+                  <div className="flex gap-2 items-center">
+                    <input 
+                      id="predict-spoilage-prob-input" 
+                      type="text" 
+                      disabled 
+                      value={imageAnalysis ? `${imageAnalysis.rotten_pct.toFixed(1)}% (${imageAnalysis.crop_name} - ${imageAnalysis.quality})` : 'Not Analyzed'} 
+                      className="input-field bg-primary/5 flex-1 opacity-80" 
+                    />
+                    <Button
+                      type="button"
+                      onClick={() => setShowImageAnalysisSection(prev => !prev)}
+                      variant={showImageAnalysisSection ? "outline" : "primary"}
+                      className="py-2.5 px-4 text-xs font-semibold flex items-center gap-1.5 shrink-0"
+                    >
+                      <Camera size={15} />
+                      <span>{imageAnalysis ? t("Re-analyse") : t("Analyse")}</span>
+                    </Button>
+                  </div>
+
+                  {/* Expandable Vegetable Quality Analysis Section */}
+                  <AnimatePresence>
+                    {showImageAnalysisSection && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="overflow-hidden mt-3"
+                      >
+                        <div className="bg-background/60 p-4 sm:p-5 rounded-xl border border-primary/20 shadow-md space-y-4">
+                          <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                            <h3 className="text-sm font-bold flex items-center gap-2 text-primary">
+                              <Camera size={16} /> {t("Vegetable Quality Analysis")}
+                            </h3>
+                            <button
+                              type="button"
+                              onClick={() => setShowImageAnalysisSection(false)}
+                              className="text-text-muted hover:text-white text-xs px-2 py-0.5 rounded hover:bg-white/10"
+                            >
+                              ✕
+                            </button>
+                          </div>
+
+                          <div className="space-y-3">
+                            <label className="text-xs text-text-muted block font-medium">
+                              {t("Upload vegetable picture to detect freshness & spoilage")}
+                            </label>
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              onChange={handleImageUpload} 
+                              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer" 
+                            />
+                            
+                            {analyzingImage && (
+                              <div className="text-primary animate-pulse flex items-center gap-2 text-xs font-medium py-1">
+                                <Loader className="animate-spin" size={14}/> Analyzing image with MobileNetV2...
+                              </div>
+                            )}
+                            
+                            {imagePreview && (
+                              <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center bg-background/50 p-3 sm:p-4 rounded-xl border border-white/5">
+                                <img 
+                                  src={imagePreview} 
+                                  alt="Upload" 
+                                  className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-lg shadow-md cursor-pointer hover:opacity-80 transition-opacity shrink-0" 
+                                  onClick={() => {
+                                    setModalImageSrc(imagePreview);
+                                    setIsModalOpen(true);
+                                  }}
+                                  title="Click to view full size"
+                                />
+                                <AnimatePresence>
+                                {imageAnalysis && (
+                                  <motion.div 
+                                    className="w-full sm:flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2.5"
+                                    initial={{ opacity: 0, y: 15 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.4 }}
+                                  >
+                                    <div className="bg-background/40 p-2.5 rounded-lg border border-white/5 flex flex-col justify-center shadow-inner">
+                                      <div className="text-[10px] text-text-muted uppercase tracking-wider mb-0.5">Detected Crop</div>
+                                      <div className="text-base font-bold text-green-800 dark:text-green-400">{imageAnalysis.crop_name}</div>
+                                    </div>
+                                    <div className="bg-background/40 p-2.5 rounded-lg border border-white/5 flex flex-col justify-center shadow-inner">
+                                      <div className="text-[10px] text-text-muted uppercase tracking-wider mb-0.5">Overall Quality</div>
+                                      <div className={`text-base font-bold ${imageAnalysis.quality === 'Rotten' ? 'text-red-400' : 'text-green-400'}`}>
+                                        {imageAnalysis.quality}
+                                      </div>
+                                    </div>
+                                    <div className="col-span-1 sm:col-span-2 bg-background/40 p-3 rounded-xl border border-white/5 shadow-inner">
+                                      <div className="w-full h-12 overflow-hidden flex" style={{ background: 'rgba(0,0,0,0.1)', borderRadius: '5px' }}>
+                                        <div 
+                                          className="h-full flex items-center justify-center relative"
+                                          style={{
+                                            width: barAnimated ? `${Math.max(imageAnalysis.fresh_pct, 18)}%` : '0%',
+                                            background: 'linear-gradient(90deg, rgba(74,222,128,0.45), rgba(34,197,94,0.55))',
+                                            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.35)',
+                                            borderRadius: '5px 0 0 5px',
+                                            transition: 'width 1.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                            overflow: 'hidden',
+                                          }}
+                                        >
+                                          <span className="text-sm font-bold text-green-900 dark:text-green-100 drop-shadow-sm whitespace-nowrap" style={{ opacity: barAnimated ? 1 : 0, transition: 'opacity 0.5s ease 0.8s' }}>🌿 Fresh {imageAnalysis.fresh_pct.toFixed(1)}%</span>
+                                        </div>
+                                        <div 
+                                          className="h-full flex items-center justify-center relative"
+                                          style={{
+                                            width: barAnimated ? `${Math.max(imageAnalysis.rotten_pct, 18)}%` : '0%',
+                                            background: 'linear-gradient(90deg, rgba(248,113,113,0.45), rgba(239,68,68,0.55))',
+                                            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.25)',
+                                            borderRadius: '0 5px 5px 0',
+                                            transition: 'width 1.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                            overflow: 'hidden',
+                                          }}
+                                        >
+                                          <span className="text-sm font-bold text-red-900 dark:text-red-100 drop-shadow-sm whitespace-nowrap" style={{ opacity: barAnimated ? 1 : 0, transition: 'opacity 0.5s ease 0.8s' }}>⚠️ Spoilage {imageAnalysis.rotten_pct.toFixed(1)}%</span>
+                                        </div>
+                                      </div>
+                                      
+                                      {imageAnalysis.rotten_pct > 50 ? (
+                                        <div className="mt-2.5 flex items-start gap-2.5 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20">
+                                          <span className="text-xl">🚨</span>
+                                          <p className="text-xs text-red-400 font-medium leading-snug">
+                                            High spoilage detected! Move your produce to cold storage immediately to minimize losses.
+                                          </p>
+                                        </div>
+                                      ) : imageAnalysis.rotten_pct > 25 ? (
+                                        <div className="mt-2.5 flex items-start gap-2.5 px-3 py-2 rounded-lg bg-orange-500/10 border border-orange-500/20">
+                                          <span className="text-xl">⚡</span>
+                                          <p className="text-xs text-orange-400 font-medium leading-snug">
+                                            Moderate spoilage risk. Consider expediting transport to cold storage for better shelf life.
+                                          </p>
+                                        </div>
+                                      ) : (
+                                        <div className="mt-2.5 flex items-start gap-2.5 px-3 py-2 rounded-lg bg-green-500/10 border border-green-500/20">
+                                          <span className="text-xl">✅</span>
+                                          <p className="text-xs text-green-400 font-medium leading-snug">
+                                            Your produce looks fresh! Store properly and transport within the recommended window.
+                                          </p>
+                                        </div>
+                                      )}
+
+                                      <Button 
+                                        type="button" 
+                                        onClick={() => {
+                                          setImageFile(null);
+                                          setImagePreview(null);
+                                          setImageAnalysis(null);
+                                        }} 
+                                        variant="outline" 
+                                        className="mt-3 w-full flex items-center justify-center gap-1.5 text-xs py-1.5"
+                                      >
+                                        <RotateCcw className="w-3.5 h-3.5" />
+                                        {t("Clear / Upload Another Picture")}
+                                      </Button>
+                                    </div>
+                                  </motion.div>
+                                )}
+                                </AnimatePresence>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </div>
               
