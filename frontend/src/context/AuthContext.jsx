@@ -4,16 +4,9 @@ import { authAPI } from '../utils/api';
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(() => {
-    try {
-      const saved = localStorage.getItem('user');
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(() => {
-    return !localStorage.getItem('user') && !!localStorage.getItem('auth_token');
+    return !!localStorage.getItem('auth_token');
   });
   const [selectedAdminWarehouseId, setSelectedAdminWarehouseId] = useState(() => {
     const saved = localStorage.getItem('selectedAdminWarehouseId');
@@ -23,7 +16,7 @@ export const AuthProvider = ({ children }) => {
   const setAdminWarehouse = (id) => {
     const safeId = id ? Number.parseInt(id, 10) : null;
     setSelectedAdminWarehouseId(safeId);
-    if (safeId) {
+    if (safeId && Number.isInteger(safeId)) {
       localStorage.setItem('selectedAdminWarehouseId', String(safeId));
     } else {
       localStorage.removeItem('selectedAdminWarehouseId');
@@ -37,14 +30,12 @@ export const AuthProvider = ({ children }) => {
         try {
           const res = await authAPI.getProfile();
           setUser(res.data);
-          localStorage.setItem('user', JSON.stringify(res.data));
         } catch (err) {
           console.error("Auth init failed", err);
           logout();
         }
       } else {
         setUser(null);
-        localStorage.removeItem('user');
       }
       setLoading(false);
     };
@@ -54,9 +45,6 @@ export const AuthProvider = ({ children }) => {
   const login = (token, userData) => {
     if (typeof token === 'string' && token.trim()) {
       localStorage.setItem('auth_token', token.trim());
-    }
-    if (userData) {
-      localStorage.setItem('user', JSON.stringify(userData));
     }
     setUser(userData);
   };
