@@ -229,55 +229,55 @@ const Dashboard = () => {
       </div>
       
       {/* KPI CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
         {user.role === 'farmer' ? (
           <>
-            <GlassCard>
-              <h3 className="text-lg font-semibold mb-2">Total Shipments</h3>
-              <p className="text-4xl font-bold text-primary">{dashboardData?.total_shipments || 0}</p>
+            <GlassCard className="p-3.5 sm:p-6 flex flex-col justify-center">
+              <h3 className="text-xs sm:text-lg font-semibold mb-1 sm:mb-2 text-text-muted">Total Shipments</h3>
+              <p className="text-2xl sm:text-4xl font-bold text-primary">{dashboardData?.total_shipments || 0}</p>
             </GlassCard>
-            <GlassCard>
-              <h3 className="text-lg font-semibold mb-2">Tons Shipped</h3>
-              <p className="text-4xl font-bold text-secondary">
-                {dashboardData?.total_tons_shipped ? dashboardData.total_tons_shipped.toFixed(1) : '0.0'} <span className="text-xl font-normal text-text-muted">t</span>
+            <GlassCard className="p-3.5 sm:p-6 flex flex-col justify-center">
+              <h3 className="text-xs sm:text-lg font-semibold mb-1 sm:mb-2 text-text-muted">Tons Shipped</h3>
+              <p className="text-2xl sm:text-4xl font-bold text-secondary">
+                {dashboardData?.total_tons_shipped ? dashboardData.total_tons_shipped.toFixed(1) : '0.0'} <span className="text-base sm:text-xl font-normal text-text-muted">t</span>
               </p>
             </GlassCard>
-            <GlassCard>
-              <h3 className="text-lg font-semibold mb-2">Avg Spoilage</h3>
-              <p className="text-4xl font-bold text-warning">
+            <GlassCard className="p-3.5 sm:p-6 flex flex-col justify-center">
+              <h3 className="text-xs sm:text-lg font-semibold mb-1 sm:mb-2 text-text-muted">Avg Spoilage</h3>
+              <p className="text-2xl sm:text-4xl font-bold text-warning">
                 {dashboardData?.avg_spoilage_rate ? dashboardData.avg_spoilage_rate.toFixed(1) : '0.0'}%
               </p>
             </GlassCard>
-            <GlassCard>
-              <h3 className="text-lg font-semibold mb-2">Cost Saved</h3>
-              <p className="text-4xl font-bold text-success">
+            <GlassCard className="p-3.5 sm:p-6 flex flex-col justify-center">
+              <h3 className="text-xs sm:text-lg font-semibold mb-1 sm:mb-2 text-text-muted">Cost Saved</h3>
+              <p className="text-2xl sm:text-4xl font-bold text-success truncate">
                 ₹{dashboardData?.total_cost_saved ? dashboardData.total_cost_saved.toLocaleString(undefined, { maximumFractionDigits: 0 }) : '0'}
               </p>
             </GlassCard>
           </>
         ) : (
           <>
-            <GlassCard>
-              <h3 className="text-lg font-semibold mb-2">Refrigeration</h3>
-              <p className={`text-3xl font-bold ${managerData?.refrig_fault ? 'text-danger' : 'text-success'}`}>
+            <GlassCard className="p-3.5 sm:p-6 flex flex-col justify-center">
+              <h3 className="text-xs sm:text-lg font-semibold mb-1 sm:mb-2 text-text-muted">Refrigeration</h3>
+              <p className={`text-xl sm:text-3xl font-bold ${managerData?.refrig_fault ? 'text-danger' : 'text-success'}`}>
                 {managerData?.refrig_fault ? '⚠️ FAULT' : '✅ NORMAL'}
               </p>
             </GlassCard>
-            <GlassCard>
-              <h3 className="text-lg font-semibold mb-2">In Storage (Vault)</h3>
-              <p className="text-4xl font-bold text-secondary">
+            <GlassCard className="p-3.5 sm:p-6 flex flex-col justify-center">
+              <h3 className="text-xs sm:text-lg font-semibold mb-1 sm:mb-2 text-text-muted">In Storage</h3>
+              <p className="text-2xl sm:text-4xl font-bold text-secondary">
                 {managerData?.in_storage || 0}
               </p>
             </GlassCard>
-            <GlassCard>
-              <h3 className="text-lg font-semibold mb-2">Pending Inspection</h3>
-              <p className="text-4xl font-bold text-warning">
+            <GlassCard className="p-3.5 sm:p-6 flex flex-col justify-center">
+              <h3 className="text-xs sm:text-lg font-semibold mb-1 sm:mb-2 text-text-muted">Pending</h3>
+              <p className="text-2xl sm:text-4xl font-bold text-warning">
                 {managerData?.in_transit || 0}
               </p>
             </GlassCard>
-            <GlassCard>
-              <h3 className="text-lg font-semibold mb-2">Dispatched/Shipped</h3>
-              <p className="text-4xl font-bold text-success">
+            <GlassCard className="p-3.5 sm:p-6 flex flex-col justify-center">
+              <h3 className="text-xs sm:text-lg font-semibold mb-1 sm:mb-2 text-text-muted">Dispatched</h3>
+              <p className="text-2xl sm:text-4xl font-bold text-success">
                 {managerData?.dispatched || 0}
               </p>
             </GlassCard>
@@ -342,7 +342,7 @@ const Dashboard = () => {
                         {shipment.status === 'Delivered' ? 'Reached' : shipment.status.replace('_', ' ')}
                       </span>
                     </div>
-                    <div className="flex justify-between text-sm text-text-muted mt-4">
+                    <div className="flex flex-col sm:flex-row justify-between text-xs sm:text-sm text-text-muted mt-3 sm:mt-4 gap-1.5 sm:gap-0">
                       <span>To: <span className="font-medium text-text-main">{shipment.destination}</span></span>
                       <span>ETA: <span className="font-medium text-text-main">{shipment.status === 'Delivered' ? 'N/A' : (shipment.eta_hours ? Number.parseFloat(shipment.eta_hours).toFixed(1) + ' hrs' : '-')}</span></span>
                       <span className="flex items-center gap-1">

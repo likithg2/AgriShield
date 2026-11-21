@@ -162,7 +162,7 @@ const Login = () => {
               <button type="button" onClick={() => setRole('warehouse_manager')} className={`flex-1 py-2 text-sm font-semibold rounded-md transition-colors ${role === 'warehouse_manager' ? 'bg-secondary text-white shadow-md' : 'text-text-muted hover:text-text-main'}`}>Warehouse Mgr</button>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-1">
                 <label htmlFor="reg-fullname" className="text-xs font-medium ml-1">Full Name</label>
                 <input id="reg-fullname" type="text" value={fullName} onChange={e => setFullName(e.target.value)} className="input-field pl-3 bg-primary/10 dark:bg-primary/20" required />

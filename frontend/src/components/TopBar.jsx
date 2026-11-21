@@ -69,7 +69,7 @@ const TopBar = () => {
 
   return (
     <>
-    <nav className="glass-panel glass-navbar mx-3 sm:mx-4 md:mx-6 mt-2 sm:mt-3 md:mt-4 px-3 sm:px-4 md:px-6 py-2.5 sm:py-3.5 sticky top-2 sm:top-4 z-50">
+    <nav className="glass-panel glass-navbar mx-2 sm:mx-4 md:mx-6 mt-1.5 sm:mt-3 md:mt-4 px-3 sm:px-4 md:px-6 py-2 sm:py-3.5 sticky top-1.5 sm:top-4 z-50">
       <div className="flex items-center justify-between">
         {/* Brand Logo - Navigates to https://agrishield-app.vercel.app/ */}
         <a 

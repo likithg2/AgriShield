@@ -257,10 +257,21 @@ option {
 
 .main-content {
   flex: 1;
-  padding: 1rem;
+  padding: 0.75rem 0.5rem;
   max-width: 1400px;
   margin: 0 auto;
   width: 100%;
+}
+
+@media (max-width: 639px) {
+  .input-field {
+    padding: 10px 14px;
+    font-size: 0.875rem;
+  }
+  .btn-primary {
+    padding: 9px 18px;
+    font-size: 0.875rem;
+  }
 }
 
 @media (min-width: 640px) {

@@ -788,31 +788,31 @@ const Prediction = () => {
             </span>
             <span className="text-text-muted">— {weatherData.desc} conditions in {formData.district}</span>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5 sm:gap-4">
-            <GlassCard className="p-4 flex flex-col items-center justify-center text-center bg-black/20 border-white/5 hover:border-primary/50 transition-colors">
-              <div className="text-2xl mb-2 notranslate" translate="no">🌡️</div>
-              <div className="text-xl font-bold">{weatherData.temp.toFixed(1)}°C</div>
-              <div className="text-xs text-text-muted uppercase mt-1">Temperature</div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3.5">
+            <GlassCard className="p-2.5 sm:p-4 flex flex-col items-center justify-center text-center bg-black/20 border-white/5 hover:border-primary/50 transition-colors">
+              <div className="text-xl sm:text-2xl mb-1 sm:mb-2 notranslate" translate="no">🌡️</div>
+              <div className="text-base sm:text-xl font-bold">{weatherData.temp.toFixed(1)}°C</div>
+              <div className="text-[10px] sm:text-xs text-text-muted uppercase mt-0.5 sm:mt-1">Temperature</div>
             </GlassCard>
-            <GlassCard className="p-4 flex flex-col items-center justify-center text-center bg-black/20 border-white/5 hover:border-primary/50 transition-colors">
-              <div className="text-2xl mb-2 notranslate" translate="no">💧</div>
-              <div className="text-xl font-bold">{weatherData.humidity.toFixed(0)}%</div>
-              <div className="text-xs text-text-muted uppercase mt-1">Humidity</div>
+            <GlassCard className="p-2.5 sm:p-4 flex flex-col items-center justify-center text-center bg-black/20 border-white/5 hover:border-primary/50 transition-colors">
+              <div className="text-xl sm:text-2xl mb-1 sm:mb-2 notranslate" translate="no">💧</div>
+              <div className="text-base sm:text-xl font-bold">{weatherData.humidity.toFixed(0)}%</div>
+              <div className="text-[10px] sm:text-xs text-text-muted uppercase mt-0.5 sm:mt-1">Humidity</div>
             </GlassCard>
-            <GlassCard className="p-4 flex flex-col items-center justify-center text-center bg-black/20 border-white/5 hover:border-primary/50 transition-colors">
-              <div className="text-2xl mb-2 notranslate" translate="no">💨</div>
-              <div className="text-xl font-bold">{weatherData.wind.toFixed(1)} km/h</div>
-              <div className="text-xs text-text-muted uppercase mt-1">Wind Speed</div>
+            <GlassCard className="p-2.5 sm:p-4 flex flex-col items-center justify-center text-center bg-black/20 border-white/5 hover:border-primary/50 transition-colors">
+              <div className="text-xl sm:text-2xl mb-1 sm:mb-2 notranslate" translate="no">💨</div>
+              <div className="text-base sm:text-xl font-bold">{weatherData.wind.toFixed(1)} km/h</div>
+              <div className="text-[10px] sm:text-xs text-text-muted uppercase mt-0.5 sm:mt-1">Wind Speed</div>
             </GlassCard>
-            <GlassCard className="p-4 flex flex-col items-center justify-center text-center bg-black/20 border-white/5 hover:border-primary/50 transition-colors">
-              <div className="text-2xl mb-2 notranslate" translate="no">🌧️</div>
-              <div className="text-xl font-bold">{weatherData.rain.toFixed(1)} mm</div>
-              <div className="text-xs text-text-muted uppercase mt-1">Rainfall (1h)</div>
+            <GlassCard className="p-2.5 sm:p-4 flex flex-col items-center justify-center text-center bg-black/20 border-white/5 hover:border-primary/50 transition-colors">
+              <div className="text-xl sm:text-2xl mb-1 sm:mb-2 notranslate" translate="no">🌧️</div>
+              <div className="text-base sm:text-xl font-bold">{weatherData.rain.toFixed(1)} mm</div>
+              <div className="text-[10px] sm:text-xs text-text-muted uppercase mt-0.5 sm:mt-1">Rainfall (1h)</div>
             </GlassCard>
-            <GlassCard className="p-4 flex flex-col items-center justify-center text-center bg-black/20 border-white/5 hover:border-primary/50 transition-colors">
-              <div className="text-2xl mb-2 notranslate" translate="no">☁️</div>
-              <div className="text-xl font-bold">{weatherData.clouds}%</div>
-              <div className="text-xs text-text-muted uppercase mt-1">Cloud Cover</div>
+            <GlassCard className="p-2.5 sm:p-4 flex flex-col items-center justify-center text-center bg-black/20 border-white/5 hover:border-primary/50 transition-colors col-span-2 sm:col-span-1">
+              <div className="text-xl sm:text-2xl mb-1 sm:mb-2 notranslate" translate="no">☁️</div>
+              <div className="text-base sm:text-xl font-bold">{weatherData.clouds}%</div>
+              <div className="text-[10px] sm:text-xs text-text-muted uppercase mt-0.5 sm:mt-1">Cloud Cover</div>
             </GlassCard>
           </div>
         </div>
@@ -1209,35 +1209,35 @@ const Prediction = () => {
                       />
                   </div>
                   
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                    <div className="bg-background/40 p-3.5 rounded-xl border border-white/5 flex flex-col justify-center">
-                      <div className="text-xs text-text-muted uppercase tracking-wider mb-1">Risk Level</div>
-                      <div className={`text-xl sm:text-2xl font-bold ${
+                  <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5">
+                    <div className="bg-background/40 p-2.5 sm:p-3.5 rounded-xl border border-white/5 flex flex-col justify-center">
+                      <div className="text-[10px] sm:text-xs text-text-muted uppercase tracking-wider mb-0.5 sm:mb-1 truncate">Risk Level</div>
+                      <div className={`text-base sm:text-2xl font-bold truncate ${
                         predictionResult.risk_level === 'HIGH' ? 'text-red-500' : 
                         predictionResult.risk_level === 'MEDIUM' ? 'text-orange-500' : 'text-green-500'
                       }`}>{predictionResult.risk_level}</div>
                     </div>
-                    <div className="bg-background/40 p-3.5 rounded-xl border border-white/5 flex flex-col justify-center">
-                      <div className="text-xs text-text-muted uppercase tracking-wider mb-1">Remaining Shelf Life</div>
-                      <div className="text-xl sm:text-2xl font-bold text-emerald-400">
+                    <div className="bg-background/40 p-2.5 sm:p-3.5 rounded-xl border border-white/5 flex flex-col justify-center">
+                      <div className="text-[10px] sm:text-xs text-text-muted uppercase tracking-wider mb-0.5 sm:mb-1 truncate">Remaining Shelf Life</div>
+                      <div className="text-base sm:text-2xl font-bold text-emerald-400 truncate">
                         {predictionResult.shelf_life_days != null ? `${predictionResult.shelf_life_days.toFixed(1)} Days` : 'N/A'}
                       </div>
                     </div>
-                    <div className="bg-background/40 p-3.5 rounded-xl border border-white/5 flex flex-col justify-center">
-                      <div className="text-xs text-text-muted uppercase tracking-wider mb-1">Qty Loss (Tons)</div>
-                      <div className="text-xl sm:text-2xl font-bold">{((predictionResult.loss_percentage / 100) * formData.quantity_tons).toFixed(2)} T</div>
+                    <div className="bg-background/40 p-2.5 sm:p-3.5 rounded-xl border border-white/5 flex flex-col justify-center">
+                      <div className="text-[10px] sm:text-xs text-text-muted uppercase tracking-wider mb-0.5 sm:mb-1 truncate">Qty Loss (Tons)</div>
+                      <div className="text-base sm:text-2xl font-bold truncate">{((predictionResult.loss_percentage / 100) * formData.quantity_tons).toFixed(2)} T</div>
                     </div>
-                    <div className="bg-background/40 p-3.5 rounded-xl border border-white/5 flex flex-col justify-center">
-                      <div className="text-xs text-text-muted uppercase tracking-wider mb-1">Est. Financial Loss</div>
-                      <div className="text-xl sm:text-2xl font-bold text-red-400">~ ₹{Math.round(predictionResult.financial_loss).toLocaleString()}</div>
+                    <div className="bg-background/40 p-2.5 sm:p-3.5 rounded-xl border border-white/5 flex flex-col justify-center">
+                      <div className="text-[10px] sm:text-xs text-text-muted uppercase tracking-wider mb-0.5 sm:mb-1 truncate">Est. Financial Loss</div>
+                      <div className="text-base sm:text-2xl font-bold text-red-400 truncate">~ ₹{Math.round(predictionResult.financial_loss).toLocaleString()}</div>
                     </div>
                   </div>
                 </div>
 
                 {/* AI Audio Advisory */}
-                <div className="bg-gradient-to-r from-gray-100 to-green-50 dark:from-gray-900 dark:to-green-900/20 border border-green-200 dark:border-green-900/50 rounded-xl p-4 mt-4 shadow-sm">
-                  <div className="flex justify-between items-center mb-3">
-                    <h3 className="font-semibold text-green-700 dark:text-primary flex items-center gap-2">
+                <div className="bg-gradient-to-r from-gray-100 to-green-50 dark:from-gray-900 dark:to-green-900/20 border border-green-200 dark:border-green-900/50 rounded-xl p-3.5 sm:p-4 mt-4 shadow-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                    <h3 className="font-semibold text-green-700 dark:text-primary flex items-center gap-2 text-sm sm:text-base">
                       <Volume2 size={18} /> GenAI Dynamic Advisory
                     </h3>
                     <div className="flex gap-2">
@@ -1246,7 +1246,7 @@ const Prediction = () => {
                     </div>
                   </div>
                   
-                  <p className="text-sm text-green-900 dark:text-green-50 mb-4 italic p-3 bg-green-100/70 dark:bg-green-900/40 rounded-lg border border-green-300 dark:border-green-700/50 whitespace-pre-wrap shadow-inner">
+                  <p className="text-xs sm:text-sm text-green-900 dark:text-green-50 mb-3 sm:mb-4 italic p-3 bg-green-100/70 dark:bg-green-900/40 rounded-lg border border-green-300 dark:border-green-700/50 whitespace-pre-wrap shadow-inner leading-relaxed">
                     {activeLang === 'kn' ? predictionResult.advisory_transcript_kn : predictionResult.advisory_transcript_en}
                   </p>
                   
@@ -1260,16 +1260,14 @@ const Prediction = () => {
                 </div>
               </GlassCard>
 
-
-              
-              
               {/* Map & Logistics */}
-              <GlassCard className="p-6">
-                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <GlassCard className="p-4 sm:p-6">
+                <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 flex items-center gap-2">
                   <MapIcon className="text-primary" /> {t("Top 3 Optimal Storage Facilities")}
                 </h2>
                 
-                <div className="overflow-x-auto">
+                {/* Desktop Table View (>= sm) */}
+                <div className="hidden sm:block overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="border-b border-white/10 text-text-muted text-sm uppercase tracking-wider">
@@ -1294,6 +1292,41 @@ const Prediction = () => {
                       ))}
                     </tbody>
                   </table>
+                </div>
+
+                {/* Mobile Touch Cards View (< sm) */}
+                <div className="sm:hidden space-y-2.5">
+                  {predictionResult.top_facilities && predictionResult.top_facilities.map((fac, idx) => (
+                    <button
+                      type="button"
+                      key={idx}
+                      onClick={() => setSelectedFacilityIdx(idx)}
+                      className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer block ${
+                        selectedFacilityIdx === idx 
+                          ? 'bg-primary/15 border-primary shadow-sm' 
+                          : 'bg-background/40 border-white/10 hover:border-white/20'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start mb-1.5">
+                        <div>
+                          <div className="font-bold text-sm text-text-main flex items-center gap-1.5">
+                            <span>{fac.facility_name}</span>
+                            {selectedFacilityIdx === idx && (
+                              <span className="text-[10px] bg-primary text-white font-bold px-1.5 py-0.2 rounded-full">Active</span>
+                            )}
+                          </div>
+                          <span className="text-xs text-text-muted">{fac.district}</span>
+                        </div>
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-white/20 dark:bg-black/30 border border-white/10">
+                          {fac.physical_distance_km.toFixed(1)} km
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs pt-1.5 border-t border-white/5">
+                        <span>Mandi: <strong className="text-green-500 font-semibold">₹{fac.mandi_price_per_kg}/kg</strong></span>
+                        <span>Net: <strong className="text-primary font-bold">₹{fac.net_estimated_payout.toLocaleString(undefined, {maximumFractionDigits: 0})}</strong></span>
+                      </div>
+                    </button>
+                  ))}
                 </div>
 
                 <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1500,7 +1533,7 @@ const Prediction = () => {
                   )}
 
                   {/* Interactive Map */}
-                  <div className="h-full min-h-[300px] rounded-xl overflow-hidden border border-white/10 relative z-0">
+                  <div className="h-[280px] sm:h-[350px] md:h-full min-h-[280px] rounded-xl overflow-hidden border border-white/10 relative z-0">
                     {loadingRoute && (
                       <div className="absolute top-3 right-3 z-[400] bg-black/75 text-emerald-300 text-xs px-3 py-1.5 rounded-full border border-emerald-500/30 backdrop-blur-md shadow-lg flex items-center gap-2">
                         <Loader size={12} className="animate-spin" />

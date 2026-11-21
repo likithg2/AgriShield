@@ -543,6 +543,59 @@ Immediate Recommendation:
     return en_advisory.strip(), kn_advisory.strip()
 
 
+def compute_calibrated_shelf_life(crop: str, max_shelf: float, storage_days: int, prob_val: float) -> float:
+    """
+    Computes a physically grounded, monotonically non-increasing remaining shelf life in days.
+    
+    Accounts for:
+    - Days already elapsed in storage (storage_days)
+    - Crop perishability profile (greens/fruits vs. durable bulbs/tubers)
+    - Final calibrated spoilage probability (including environmental heat, road stress, and visual rot)
+    """
+    pot_rem = max(0.0, float(max_shelf) - float(storage_days))
+    if pot_rem <= 0.0:
+        return 0.0
+
+    p = max(0.0, min(1.0, float(prob_val)))
+
+    # Terminal total decay (rot / severe fungal liquefaction)
+    if p >= 0.95:
+        return 0.0
+
+    # Critical near-total loss (90% to 95% spoilage risk): under 10 hours remaining
+    if p >= 0.90:
+        frac = (p - 0.90) / 0.05
+        return round(max(0.0, 0.4 * (1.0 - frac)), 1)
+
+    # Establish produce category high-risk surviving window at p=0.60
+    if max_shelf <= 5.0:       # Highly perishable leafy / brassica (Spinach, Okra, Cabbage, Cauliflower)
+        high_bound = min(pot_rem * 0.25, 1.0)
+    elif max_shelf <= 15.0:    # Perishable fruits / vegetables (Tomato, Cucumber, Banana, Mango, Grapes, Capsicum, Brinjal)
+        high_bound = min(pot_rem * 0.25, 2.5)
+    elif max_shelf <= 35.0:    # Semi-perishable (Pomegranate)
+        high_bound = min(pot_rem * 0.20, 5.0)
+    else:                      # Durable bulbs and tubers (Onion, Potato, Coconut)
+        high_bound = min(pot_rem * 0.12, 7.5)
+
+    med_bound = min(pot_rem, max(high_bound + 0.5, pot_rem * 0.55))
+
+    if p >= 0.60:
+        # High Risk decay (0.60 <= p < 0.90): smooth accelerated non-linear decline to 0.4 days
+        frac = (p - 0.60) / 0.30
+        rem = 0.4 + (high_bound - 0.4) * ((1.0 - frac) ** 1.3)
+        return round(max(0.2, rem), 1)
+    elif p >= 0.30:
+        # Medium Risk degradation (0.30 <= p < 0.60): continuous transition between med_bound and high_bound
+        frac = (p - 0.30) / 0.30
+        rem = high_bound + (med_bound - high_bound) * (1.0 - frac)
+        return round(max(0.5, rem), 1)
+    else:
+        # Low Risk (0.0 <= p < 0.30): healthy produce, gradual decline from pot_rem
+        frac = p / 0.30
+        rem = med_bound + (pot_rem - med_bound) * (1.0 - frac)
+        return round(max(1.0, rem), 1)
+
+
 @router.post("/", response_model=PredictionResponse, status_code=201)
 def create_prediction(
     payload: PredictionCreate,
@@ -628,7 +681,6 @@ def create_prediction(
         X_scaled = artifacts['scaler'].transform(X_raw)
         prob_val = float(artifacts['ensemble_clf'].predict_proba(X_scaled)[0][1])
         loss_val = max(0.0, float(artifacts['loss_regressor'].predict(X_scaled)[0]))
-        shelf_val = max(0.0, float(artifacts['shelf_regressor'].predict(X_scaled)[0]))
 
         # Fine-tuned physical calibration for Day 0 (Freshly Harvested produce)
         if payload.storage_days == 0:
@@ -640,11 +692,7 @@ def create_prediction(
             
             # Blend model context with physical day-0 ground truth (strictly Low Risk < 0.20)
             prob_val = min(0.18, max(0.015, (0.7 * day0_calibrated_prob) + (0.3 * min(prob_val, 0.25))))
-            shelf_val = max(1.0, round(max_crop_shelf * (1.0 - (prob_val * 0.7)), 1))
-        else:
-            remaining_possible = max(0.2, max_crop_shelf - payload.storage_days)
-            shelf_val = min(remaining_possible, round(max_crop_shelf * max(0.0, 1.0 - prob_val), 1))
-        
+
         if payload.picture_spoilage_prob is not None:
             # Reflect visible spoilage if detected from image
             if payload.picture_spoilage_prob >= 0.45:
@@ -658,11 +706,23 @@ def create_prediction(
         if payload.storage_days == 0:
             prob_val = 0.045
             loss_val = 1.2
-            shelf_val = round(max_crop_shelf * 0.95, 1)
         else:
             prob_val = 0.24
             loss_val = 4.0
-            shelf_val = round(max(1.0, (max_crop_shelf - payload.storage_days) * 0.8), 1)
+        if payload.picture_spoilage_prob is not None:
+            if payload.picture_spoilage_prob >= 0.45:
+                prob_val = max(prob_val, (payload.picture_spoilage_prob * 0.85) + (prob_val * 0.15))
+            else:
+                prob_val = (prob_val * 0.8) + (min(payload.picture_spoilage_prob, 0.15) * 0.2)
+            prob_val = max(0.01, min(0.99, prob_val))
+
+    # Compute physically grounded remaining shelf life based on final calibrated probability & crop characteristics
+    shelf_val = compute_calibrated_shelf_life(
+        crop=payload.crop,
+        max_shelf=max_crop_shelf,
+        storage_days=payload.storage_days,
+        prob_val=prob_val,
+    )
 
     risk_level = "HIGH" if prob_val > 0.6 else "MEDIUM" if prob_val > 0.3 else "LOW"
 
