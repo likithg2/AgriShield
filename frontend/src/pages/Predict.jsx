@@ -10,7 +10,7 @@ import { AuthContext } from '../context/AuthContext';
 import { LanguageContext } from '../context/LanguageContext';
 import { ThemeContext } from '../context/ThemeContext';
 import { predictionsAPI, shipmentsAPI, formatApiError } from '../utils/api';
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import ImageModal from '../components/ImageModal';
 
@@ -26,6 +26,20 @@ L.Icon.Default.mergeOptions({
   iconUrl: markerIcon,
   shadowUrl: markerShadow,
 });
+
+function RouteBoundsFitter({ bounds }) {
+  const map = useMap();
+  useEffect(() => {
+    if (bounds && bounds.length > 1) {
+      try {
+        map.fitBounds(bounds, { padding: [35, 35] });
+      } catch (e) {
+        // Safe catch if map is resizing
+      }
+    }
+  }, [map, bounds]);
+  return null;
+}
 
 const CROP_LIST = [
   "Tomato", "Onion", "Potato", "Cucumber"
@@ -279,6 +293,63 @@ const Prediction = () => {
   const [advisoryAudioUrl, setAdvisoryAudioUrl] = useState(null);
   const [fetchingAudio, setFetchingAudio] = useState(false);
   const [animatedSpoilageProb, setAnimatedSpoilageProb] = useState(0);
+  const [routeCoordinates, setRouteCoordinates] = useState([]);
+  const [loadingRoute, setLoadingRoute] = useState(false);
+
+  // Fetch actual driving road navigation route from OSRM
+  useEffect(() => {
+    if (
+      !predictionResult?.f_lat ||
+      !predictionResult?.f_lng ||
+      !predictionResult?.top_facilities?.[selectedFacilityIdx]
+    ) {
+      setRouteCoordinates([]);
+      return;
+    }
+
+    const originLat = predictionResult.f_lat;
+    const originLng = predictionResult.f_lng;
+    const fac = predictionResult.top_facilities[selectedFacilityIdx];
+    const destLat = fac.latitude;
+    const destLng = fac.longitude;
+
+    let isMounted = true;
+    setLoadingRoute(true);
+
+    const fetchRoadRoute = async () => {
+      try {
+        const url = `https://router.project-osrm.org/route/v1/driving/${originLng},${originLat};${destLng},${destLat}?overview=full&geometries=geojson`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("OSRM routing request failed");
+        const data = await res.json();
+        if (data?.routes?.length > 0 && data.routes[0]?.geometry?.coordinates?.length > 0) {
+          // OSRM coordinates are [lng, lat], Leaflet polyline expects [lat, lng]
+          const roadPoints = data.routes[0].geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+          if (isMounted) {
+            setRouteCoordinates(roadPoints);
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn("Could not retrieve OSRM road geometry, falling back to direct line:", err);
+      }
+
+      if (isMounted) {
+        setRouteCoordinates([
+          [originLat, originLng],
+          [destLat, destLng]
+        ]);
+      }
+    };
+
+    fetchRoadRoute().finally(() => {
+      if (isMounted) setLoadingRoute(false);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [predictionResult, selectedFacilityIdx]);
 
   // Animate the Spoilage Probability Gauge
   useEffect(() => {
@@ -1357,18 +1428,44 @@ const Prediction = () => {
 
                   {/* Interactive Map */}
                   <div className="h-full min-h-[300px] rounded-xl overflow-hidden border border-white/10 relative z-0">
+                    {loadingRoute && (
+                      <div className="absolute top-3 right-3 z-[400] bg-black/75 text-emerald-300 text-xs px-3 py-1.5 rounded-full border border-emerald-500/30 backdrop-blur-md shadow-lg flex items-center gap-2">
+                        <Loader size={12} className="animate-spin" />
+                        <span>Calculating road route...</span>
+                      </div>
+                    )}
+                    {!loadingRoute && routeCoordinates.length > 2 && (
+                      <div className="absolute top-3 right-3 z-[400] bg-black/75 text-white text-xs px-3 py-1.5 rounded-full border border-emerald-500/30 backdrop-blur-md shadow-lg flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                        <span>Road Navigation Route</span>
+                      </div>
+                    )}
                     {predictionResult.f_lat && predictionResult.top_facilities && predictionResult.top_facilities[selectedFacilityIdx] ? (
                       <MapContainer 
-                        bounds={[
-                          [predictionResult.f_lat, predictionResult.f_lng],
-                          [predictionResult.top_facilities[selectedFacilityIdx].latitude, predictionResult.top_facilities[selectedFacilityIdx].longitude]
-                        ]}
+                        bounds={
+                          routeCoordinates.length > 0
+                            ? routeCoordinates
+                            : [
+                                [predictionResult.f_lat, predictionResult.f_lng],
+                                [predictionResult.top_facilities[selectedFacilityIdx].latitude, predictionResult.top_facilities[selectedFacilityIdx].longitude]
+                              ]
+                        }
                         zoom={8} 
                         scrollWheelZoom={false} 
                         style={{ height: '100%', width: '100%' }}
-                        key={`map-${selectedFacilityIdx}`} // Force re-render on facility change to update bounds
+                        key={`map-${selectedFacilityIdx}-${routeCoordinates.length > 2 ? 'road' : 'direct'}`}
                       >
                         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                        <RouteBoundsFitter 
+                          bounds={
+                            routeCoordinates.length > 0
+                              ? routeCoordinates
+                              : [
+                                  [predictionResult.f_lat, predictionResult.f_lng],
+                                  [predictionResult.top_facilities[selectedFacilityIdx].latitude, predictionResult.top_facilities[selectedFacilityIdx].longitude]
+                                ]
+                          } 
+                        />
                         <Marker position={[predictionResult.f_lat, predictionResult.f_lng]}>
                           <Popup>Origin: {predictionResult.district}</Popup>
                         </Marker>
@@ -1376,13 +1473,18 @@ const Prediction = () => {
                           <Popup>Target: {predictionResult.top_facilities[selectedFacilityIdx].facility_name}</Popup>
                         </Marker>
                         <Polyline 
-                          positions={[
-                            [predictionResult.f_lat, predictionResult.f_lng],
-                            [predictionResult.top_facilities[selectedFacilityIdx].latitude, predictionResult.top_facilities[selectedFacilityIdx].longitude]
-                          ]} 
+                          positions={
+                            routeCoordinates.length > 0
+                              ? routeCoordinates
+                              : [
+                                  [predictionResult.f_lat, predictionResult.f_lng],
+                                  [predictionResult.top_facilities[selectedFacilityIdx].latitude, predictionResult.top_facilities[selectedFacilityIdx].longitude]
+                                ]
+                          } 
                           color="#10b981" 
-                          weight={4} 
-                          dashArray="10, 10" 
+                          weight={5} 
+                          opacity={0.85}
+                          dashArray={routeCoordinates.length > 2 ? undefined : "10, 10"} 
                         />
                       </MapContainer>
                     ) : (

@@ -593,7 +593,23 @@ def create_prediction(
         prob_val, loss_val, shelf_val = 0.384, 4.8, 5.2
 
     risk_level = "HIGH" if prob_val > 0.6 else "MEDIUM" if prob_val > 0.3 else "LOW"
-    financial_loss = (loss_val / 100) * payload.quantity_tons * 48000
+
+    # Calibrate loss_val based on actual spoilage probability and risk level.
+    # The raw regression baseline is around 14-17% (theoretical post-harvest potential),
+    # but for a fresh or low-risk shipment the expected immediate loss is low (1.5% - 4.5%).
+    if prob_val < 0.3:
+        calibrated_loss = max(1.0, min(loss_val, 1.5 + (loss_val * 0.25 * (prob_val / 0.3))))
+    elif prob_val <= 0.6:
+        calibrated_loss = max(4.0, min(loss_val, 4.5 + (loss_val * 0.55 * ((prob_val - 0.3) / 0.3))))
+    else:
+        calibrated_loss = max(8.0, min(100.0, loss_val * min(1.3, 0.85 + (prob_val - 0.6))))
+
+    loss_val = round(calibrated_loss, 2)
+
+    # Use the crop's actual mandi market rate per ton (or fallback to ₹25,000/ton if unavailable)
+    # instead of a fixed ₹48,000/ton multiplier, to prevent over-inflating estimated financial loss.
+    crop_price_per_ton = (mandi_price * 1000.0) if (mandi_price and mandi_price > 0) else 25000.0
+    financial_loss = round((loss_val / 100.0) * payload.quantity_tons * crop_price_per_ton, 2)
 
     prediction = Prediction(
         user_id=current_user.id,
